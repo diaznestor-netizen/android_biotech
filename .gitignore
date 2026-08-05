@@ -1,0 +1,8 @@
+
+.gradle/
+build/
+*.zip
+*.jar
+android/.gradle/
+android/build/
+

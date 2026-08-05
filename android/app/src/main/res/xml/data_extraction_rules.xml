@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="biotech_session.xml" />
+        <exclude domain="database" path="biotech.db" />
+        <exclude domain="file" path="uploads/" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="biotech_session.xml" />
+        <exclude domain="database" path="biotech.db" />
+        <exclude domain="file" path="uploads/" />
+    </device-transfer>
+</data-extraction-rules>
