@@ -5,5 +5,8 @@ build/
 *.jar
 android/.gradle/
 android/build/
+<<<<<<< HEAD
 !gradle/wrapper/gradle-wrapper.jar
+=======
+>>>>>>> e387e1054f39d5bc96ac3d6616fa4795d1bd3cb3
 
