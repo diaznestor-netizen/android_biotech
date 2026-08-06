@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="azul_oscuro">#0a1628</color>
+    <color name="azul_principal">#0d2137</color>
+    <color name="azul_medio">#1a3a5c</color>
+    <color name="verde_principal">#00a86b</color>
+    <color name="verde_oscuro">#008c5a</color>
+    <color name="blanco">#ffffff</color>
+    <color name="gris_100">#f8f9fa</color>
+    <color name="gris_600">#6c757d</color>
+    <color name="gris_800">#343a40</color>
+    <color name="rojo_alerta">#dc3545</color>
+    <color name="naranja">#fd7e14</color>
+</resources>

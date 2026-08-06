@@ -1,0 +1,6 @@
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/biotech_mark"
+    android:insetLeft="26dp"
+    android:insetTop="26dp"
+    android:insetRight="26dp"
+    android:insetBottom="26dp" />

@@ -1,0 +1,9 @@
+
+.gradle/
+build/
+*.zip
+*.jar
+android/.gradle/
+android/build/
+!gradle/wrapper/gradle-wrapper.jar
+
