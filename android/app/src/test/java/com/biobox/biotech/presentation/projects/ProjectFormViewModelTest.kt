@@ -16,7 +16,6 @@ import com.biobox.biotech.domain.notifications.NotificationChannel
 import com.biobox.biotech.domain.notifications.NotificationDispatcher
 import com.biobox.biotech.domain.notifications.NotificationEvent
 import com.biobox.biotech.domain.notifications.NotificationPriority
-import com.biobox.biotech.domain.repository.NotificationRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +36,7 @@ import org.junit.Test
 class ProjectFormViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val notificationCenter = NotificationCenter(
-        NotificationDispatcher(FakeNotificationRepository())
+        NotificationDispatcher()
     )
 
     @Before
@@ -200,9 +199,5 @@ class ProjectFormViewModelTest {
         override suspend fun deleteProject(localId: String) = Result.success(Unit)
         override suspend fun retrySync(localId: String) = Result.success(Unit)
         override suspend fun resolveConflict(localId: String, useRemote: Boolean) = Result.success(Unit)
-    }
-
-    private class FakeNotificationRepository : NotificationRepository {
-        override suspend fun sendTelegramNotification(message: String, priority: String): Result<Unit> = Result.success(Unit)
     }
 }

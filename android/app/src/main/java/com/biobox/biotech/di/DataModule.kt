@@ -33,7 +33,6 @@ abstract class DataModule {
     @Binds @Singleton abstract fun bindCalendarRepository(impl: CalendarRepositoryImpl): CalendarRepository
     @Binds @Singleton abstract fun bindUserRepository(impl: UserRepositoryImpl): UserRepository
     @Binds @Singleton abstract fun bindMaterialRepository(impl: MaterialRepositoryImpl): MaterialRepository
-    @Binds @Singleton abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
 
     companion object {
         @Provides @Singleton

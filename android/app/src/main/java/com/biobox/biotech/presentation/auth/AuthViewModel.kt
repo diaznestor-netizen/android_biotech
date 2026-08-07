@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.biobox.biotech.core.common.UiState
 import com.biobox.biotech.core.datastore.SessionDataStore
 import com.biobox.biotech.core.security.BiometricAuth
-import com.biobox.biotech.data.repository.TwoFactorRequiredException
 import com.biobox.biotech.domain.model.User
 import com.biobox.biotech.domain.notifications.NotificationCenter
 import com.biobox.biotech.domain.notifications.NotificationEvent
@@ -34,12 +33,6 @@ class AuthViewModel @Inject constructor(
 
     private val _sessionValidationState = MutableStateFlow<UiState<Boolean>>(UiState.Idle)
     val sessionValidationState: StateFlow<UiState<Boolean>> = _sessionValidationState.asStateFlow()
-
-    private val _pendingSecondFactorSessionId = MutableStateFlow<String?>(null)
-    val pendingSecondFactorSessionId: StateFlow<String?> = _pendingSecondFactorSessionId.asStateFlow()
-
-    private val _pendingSecondFactorMessage = MutableStateFlow<String?>(null)
-    val pendingSecondFactorMessage: StateFlow<String?> = _pendingSecondFactorMessage.asStateFlow()
 
     val currentUser = authRepository.currentUser.stateIn(
         scope = viewModelScope,
@@ -74,17 +67,9 @@ class AuthViewModel @Inject constructor(
             _loginState.value = UiState.Loading
             authRepository.login(phoneNumber, password)
                 .onSuccess { user ->
-                    _pendingSecondFactorSessionId.value = null
-                    _pendingSecondFactorMessage.value = null
                     _loginState.value = UiState.Success(user)
                 }
                 .onFailure { error ->
-                    if (error is TwoFactorRequiredException) {
-                        _pendingSecondFactorSessionId.value = error.sessionId
-                        _pendingSecondFactorMessage.value = error.message
-                        _loginState.value = UiState.Idle
-                        return@onFailure
-                    }
                     _loginState.value = UiState.Error(error.message ?: "Error desconocido")
                     if (error.message?.contains("bloqueada", ignoreCase = true) == true) {
                         notificationCenter.notify(
@@ -98,27 +83,26 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun loginWithDailyCode(telefono: String, codigo: String) {
+    fun register(phoneNumber: String, password: String, nombre: String, apellido: String, email: String) {
         if (_loginState.value is UiState.Loading) return
         viewModelScope.launch {
             _loginState.value = UiState.Loading
-            authRepository.loginWithDailyCode(telefono, codigo)
+            authRepository.register(phoneNumber, password, nombre, apellido, email)
                 .onSuccess { user ->
-                    _pendingSecondFactorSessionId.value = null
-                    _pendingSecondFactorMessage.value = null
                     _loginState.value = UiState.Success(user)
                 }
                 .onFailure { error ->
                     _loginState.value = UiState.Error(error.message ?: "Error desconocido")
-                    if (error.message?.contains("bloqueada", ignoreCase = true) == true) {
-                        notificationCenter.notify(
-                            NotificationEvent.AccountBlocked(
-                                email = telefono,
-                                reason = "Múltiples intentos fallidos detectados desde Android"
-                            )
-                        )
-                    }
                 }
+        }
+    }
+
+    fun reauthenticate(password: String) {
+        viewModelScope.launch {
+            _loginState.value = UiState.Loading
+            authRepository.reauthenticate(password)
+                .onSuccess { _loginState.value = UiState.Success(it) }
+                .onFailure { _loginState.value = UiState.Error(it.message ?: "Error desconocido") }
         }
     }
 
@@ -145,42 +129,11 @@ class AuthViewModel @Inject constructor(
         _loginState.value = UiState.Idle
     }
 
-    fun clearPendingSecondFactor() {
-        _pendingSecondFactorSessionId.value = null
-        _pendingSecondFactorMessage.value = null
-    }
-
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()
             _loginState.value = UiState.Idle
             _sessionValidationState.value = UiState.Idle
-            clearPendingSecondFactor()
         }
     }
-
-    suspend fun completeSecondFactor(code: String): Result<User> {
-        val sessionId = pendingSecondFactorSessionId.value
-            ?: return Result.failure(IllegalStateException("No hay una verificación pendiente"))
-        val result = authRepository.verifySecondFactor(sessionId, code)
-        result.onSuccess {
-            clearPendingSecondFactor()
-        }
-        return result
-    }
-
-    suspend fun getTelegramStatus() = authRepository.getTelegramStatus()
-
-    suspend fun getLinkingCode() = authRepository.getLinkingCode()
-
-    suspend fun requestOtp(action: String = "change_password") = authRepository.requestOtp(action)
-
-    suspend fun verifyOtp(code: String, action: String = "change_password") = authRepository.verifyOtp(action, code)
-
-    suspend fun unlinkTelegram() = authRepository.unlinkTelegram()
-
-    suspend fun requestPasswordRecovery(phoneNumber: String) = authRepository.requestPasswordRecovery(phoneNumber)
-
-    suspend fun confirmPasswordRecovery(phoneNumber: String, code: String, newPassword: String) =
-        authRepository.confirmPasswordRecovery(phoneNumber, code, newPassword)
 }

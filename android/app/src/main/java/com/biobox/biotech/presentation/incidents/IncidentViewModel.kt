@@ -52,7 +52,7 @@ class IncidentViewModel @Inject constructor(
                     loadIncidents()
                     onSuccess()
                     
-                    // Notify to Telegram
+                    // Notify incident
                     notificationCenter.notify(
                         NotificationEvent.IncidentReported(
                             id = incident.id.toString(),

@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -128,24 +127,6 @@ fun ReportsScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondaryDark
                                 )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Button(
-                            onClick = { viewModel.sendReportToTelegram(selectedReport) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                            shape = RoundedCornerShape(12.dp),
-                            enabled = !state.isSendingToTelegram && !state.telegramSuccess
-                        ) {
-                            if (state.isSendingToTelegram) {
-                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
-                            } else {
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (state.telegramSuccess) "ENVIADO A TELEGRAM" else "NOTIFICAR POR TELEGRAM")
                             }
                         }
                     }

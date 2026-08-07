@@ -176,7 +176,7 @@ class ProjectFormViewModel @Inject constructor(
                 onSuccess = {
                     _state.update { it.copy(message = "Guardado local confirmado", hasUnsavedChanges = false) }
                     
-                    // Notify to Telegram
+                    // Notify project creation
                     if (!current.isEditMode) {
                         notificationCenter.notify(
                             NotificationEvent.ProjectCreated(

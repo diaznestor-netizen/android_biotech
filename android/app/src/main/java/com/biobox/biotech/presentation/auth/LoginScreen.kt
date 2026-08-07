@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +22,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -41,19 +39,19 @@ import com.biobox.biotech.presentation.theme.*
 
 @Composable
 fun LoginScreen(
-    onLogin: (telefono: String, codigo: String) -> Unit,
+    onLogin: (telefono: String, password: String) -> Unit,
+    onRegister: () -> Unit,
     isLoading: Boolean,
     errorMessage: String?,
     syncViewModel: SyncStatusViewModel = hiltViewModel()
 ) {
     val syncState by syncViewModel.state.collectAsStateWithLifecycle()
-    val uriHandler = LocalUriHandler.current
     var phoneNumber by remember { mutableStateOf("") }
-    var codigo by remember { mutableStateOf("") }
-    var codigoVisible by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var rememberSession by remember { mutableStateOf(true) }
     var phoneNumberTouched by remember { mutableStateOf(false) }
-    var codigoTouched by remember { mutableStateOf(false) }
+    var passwordTouched by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
     // Animations
@@ -69,14 +67,15 @@ fun LoginScreen(
             else -> null
         }
     }
-    val codigoError = remember(codigo, codigoTouched) {
+    val passwordError = remember(password, passwordTouched) {
         when {
-            !codigoTouched -> null
-            codigo.isBlank() -> "La clave de acceso es obligatoria."
+            !passwordTouched -> null
+            password.isBlank() -> "La contraseña es obligatoria."
+            password.length < 8 -> "La contraseña debe tener al menos 8 caracteres."
             else -> null
         }
     }
-    val canSubmit = phoneNumberError == null && codigoError == null && phoneNumber.isNotBlank() && codigo.isNotBlank() && !isLoading
+    val canSubmit = phoneNumberError == null && passwordError == null && phoneNumber.isNotBlank() && password.isNotBlank() && !isLoading
 
     Box(
         modifier = Modifier
@@ -126,7 +125,7 @@ fun LoginScreen(
                                 contentDescription = "Logo BioTech",
                                 modifier = Modifier
                                     .padding(20.dp)
-                                    .size(100.dp),
+                                    .size(140.dp),
                                 contentScale = ContentScale.Fit
                             )
                         }
@@ -206,20 +205,20 @@ fun LoginScreen(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            // Clave de acceso diaria (vía Telegram)
+                            // Contraseña
                             ModernTextField(
-                                value = codigo,
+                                value = password,
                                 onValueChange = {
-                                    codigo = it
-                                    codigoTouched = true
+                                    password = it
+                                    passwordTouched = true
                                 },
-                                label = "Clave de acceso",
+                                label = "Contraseña",
                                 icon = Icons.Default.Lock,
                                 isPassword = true,
-                                passwordVisible = codigoVisible,
-                                onPasswordToggle = { codigoVisible = !codigoVisible },
-                                isError = codigoError != null,
-                                errorText = codigoError,
+                                passwordVisible = passwordVisible,
+                                onPasswordToggle = { passwordVisible = !passwordVisible },
+                                isError = passwordError != null,
+                                errorText = passwordError,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Password,
                                     imeAction = ImeAction.Done
@@ -227,47 +226,24 @@ fun LoginScreen(
                                 keyboardActions = KeyboardActions(
                                     onDone = {
                                         focusManager.clearFocus()
-                                        if (canSubmit) onLogin(phoneNumber.trim(), codigo.trim())
+                                        if (canSubmit) onLogin(phoneNumber.trim(), password.trim())
                                     }
                                 )
                             )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Obtener clave en Telegram
-                            OutlinedButton(
-                                onClick = {
-                                    uriHandler.openUri("https://t.me/BioTechBot?start=login")
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    1.dp,
-                                    PrimaryCyan.copy(alpha = 0.5f)
-                                )
+                            TextButton(
+                                onClick = onRegister,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = PrimaryCyan
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "OBTENER CLAVE EN TELEGRAM",
+                                    text = "¿No tienes cuenta? Regístrate",
                                     color = PrimaryCyan,
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-
-                            Text(
-                                text = "Tu clave de acceso se recibe por Telegram y es válida por 24 horas (1 vez al día).",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondaryDark,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
 
                             Row(
                                 modifier = Modifier
@@ -306,8 +282,8 @@ fun LoginScreen(
                             Button(
                                 onClick = {
                                     phoneNumberTouched = true
-                                    codigoTouched = true
-                                    if (canSubmit) onLogin(phoneNumber.trim(), codigo.trim())
+                                    passwordTouched = true
+                                    if (canSubmit) onLogin(phoneNumber.trim(), password.trim())
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -355,7 +331,8 @@ fun LoginScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 32.dp),
+                        .background(Color.Transparent)
+                        .padding(bottom = 32.dp, top = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -380,9 +357,16 @@ fun LoginScreen(
                     Text(
                         text = "© 2026 BIOTECH. Todos los derechos reservados.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondaryDark.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 6.dp)
+                    )
+                    Text(
+                        text = "Desarrollado por Néstor Diaz Gaona",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }

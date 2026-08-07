@@ -12,7 +12,7 @@ class NotificationCenter @Inject constructor(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    fun notify(event: NotificationEvent, channels: List<NotificationChannel> = listOf(NotificationChannel.TELEGRAM)) {
+    fun notify(event: NotificationEvent, channels: List<NotificationChannel> = emptyList()) {
         val (message, priority) = NotificationFormatter.format(event)
         
         scope.launch {
@@ -25,7 +25,7 @@ class NotificationCenter @Inject constructor(
      */
     fun sendRawAlert(message: String, priority: NotificationPriority = NotificationPriority.HIGH) {
         scope.launch {
-            dispatcher.dispatch(message, priority, listOf(NotificationChannel.TELEGRAM))
+            dispatcher.dispatch(message, priority, emptyList())
         }
     }
 }

@@ -44,12 +44,16 @@ class InspectionViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val machineId: Int = checkNotNull(savedStateHandle["machineId"])
+    private val machineId: Int = savedStateHandle.get<Int>("machineId") ?: -1
     private val _state = MutableStateFlow(InspectionUIState())
     val state: StateFlow<InspectionUIState> = _state.asStateFlow()
 
     init {
-        loadMachine()
+        if (machineId <= 0) {
+            _state.update { it.copy(error = "Identificador de máquina no válido") }
+        } else {
+            loadMachine()
+        }
     }
 
     private fun loadMachine() {

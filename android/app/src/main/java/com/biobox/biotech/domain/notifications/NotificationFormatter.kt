@@ -94,14 +94,6 @@ object NotificationFormatter {
                     "Email: ${event.email}\nMotivo: ${event.reason}"
                 )
             }
-            is NotificationEvent.TelegramLinked -> {
-                listOf(
-                    "Seguridad", 
-                    "Telegram Vinculado", 
-                    NotificationPriority.HIGH,
-                    "Usuario BioTech: ${event.user}\nCuenta Telegram: ${event.telegramUser}"
-                )
-            }
             is NotificationEvent.OtpSent -> {
                 listOf(
                     "Seguridad", 

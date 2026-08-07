@@ -5,6 +5,7 @@ import android.net.Uri
 sealed class NavRoutes(val route: String) {
     object Splash : NavRoutes("splash")
     object Login : NavRoutes("login")
+    object Register : NavRoutes("register")
     object Dashboard : NavRoutes("dashboard")
     object Analytics : NavRoutes("analytics")
     object Projects : NavRoutes("projects")
@@ -66,7 +67,6 @@ sealed class NavRoutes(val route: String) {
     object AuditLog : NavRoutes("audit_log")
     object Notifications : NavRoutes("notifications")
     object Summaries : NavRoutes("summaries")
-    object TelegramLinking : NavRoutes("telegram_linking")
-    object OtpVerification : NavRoutes("otp_verification")
+    object ReauthPassword : NavRoutes("reauth_password")
     object Diagnostics : NavRoutes("diagnostics")
 }

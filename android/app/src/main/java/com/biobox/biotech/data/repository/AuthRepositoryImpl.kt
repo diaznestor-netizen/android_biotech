@@ -11,11 +11,8 @@ import com.biobox.biotech.data.local.database.BioTechDatabase
 import com.biobox.biotech.data.mapper.toDomain
 import com.biobox.biotech.data.remote.api.AuthService
 import com.biobox.biotech.data.remote.dto.LoginRequest
+import com.biobox.biotech.data.remote.dto.RegisterRequest
 import com.biobox.biotech.core.util.safeApiCall
-import com.biobox.biotech.data.remote.dto.OtpActionRequest
-import com.biobox.biotech.data.remote.dto.PasswordlessLoginRequest
-import com.biobox.biotech.data.remote.dto.PasswordRecoveryConfirmRequest
-import com.biobox.biotech.data.remote.dto.PasswordRecoveryRequest
 import com.biobox.biotech.domain.model.User
 import com.biobox.biotech.domain.repository.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,11 +25,6 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
-
-class TwoFactorRequiredException(
-    val sessionId: String,
-    override val message: String
-) : Exception(message)
 
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
@@ -50,6 +42,20 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun getPendingSyncCount(): Flow<Int> = syncOperationDao.getPendingCount()
 
+    override suspend fun register(phoneNumber: String, password: String, nombre: String, apellido: String, email: String): Result<User> {
+        val phoneMasked = SecurityUtils.ofuscarTelefono(phoneNumber)
+        Log.d(AppConstants.TAG_AUTH, "Registrando cuenta para: $phoneMasked")
+
+        return safeApiCall(
+            apiCall = { authService.register(RegisterRequest(phoneNumber, password, nombre, apellido, email)) },
+            transform = { it }
+        ).mapCatching { body ->
+            persistSession(body)
+        }.onFailure { error ->
+            Log.e(AppConstants.TAG_AUTH, "Error en registro ($phoneMasked): ${error.message}")
+        }
+    }
+
     override suspend fun login(phoneNumber: String, password: String): Result<User> {
         val phoneMasked = SecurityUtils.ofuscarTelefono(phoneNumber)
         Log.d(AppConstants.TAG_AUTH, "Iniciando autenticación para: $phoneMasked")
@@ -58,56 +64,31 @@ class AuthRepositoryImpl @Inject constructor(
             apiCall = { authService.login(LoginRequest(phoneNumber, password)) },
             transform = { it }
         ).mapCatching { body ->
-            if (body.requires2FA) {
-                throw TwoFactorRequiredException(
-                    sessionId = body.sessionId.orEmpty(),
-                    message = body.message ?: "Se requiere verificacion por Telegram"
-                )
-            }
-            val accessToken = body.tokens?.accessToken
-                ?: throw Exception("El servidor no devolvio access token")
-            val user = body.user ?: throw Exception("El servidor no devolvio usuario")
-            sessionDataStore.saveSession(accessToken = accessToken, user = user)
-            user.toDomain()
+            persistSession(body)
         }.onFailure { error ->
             Log.e(AppConstants.TAG_AUTH, "Error en login ($phoneMasked): ${error.message}")
         }
     }
 
-    override suspend fun loginWithDailyCode(telefono: String, codigo: String): Result<User> {
-        val phoneMasked = SecurityUtils.ofuscarTelefono(telefono)
-        Log.d(AppConstants.TAG_AUTH, "Iniciando autenticación passwordless para: $phoneMasked")
-
-        return safeApiCall(
-            apiCall = { authService.loginPasswordless(PasswordlessLoginRequest(telefono, codigo)) },
-            transform = { it }
-        ).mapCatching { body ->
-            val accessToken = body.tokens?.accessToken
-                ?: throw Exception("El servidor no devolvio access token")
-            val user = body.user ?: throw Exception("El servidor no devolvio usuario")
-            sessionDataStore.saveSession(accessToken = accessToken, user = user)
-            user.toDomain()
-        }.onFailure { error ->
-            Log.e(AppConstants.TAG_AUTH, "Error en login passwordless ($phoneMasked): ${error.message}")
-        }
-    }
-
-    override suspend fun verifySecondFactor(sessionId: String, code: String): Result<User> {
+    override suspend fun reauthenticate(password: String): Result<User> {
         return try {
-            Log.d("2FA_DEBUG", "verify-2fa session_id=$sessionId code=$code")
-            val response = authService.verifySecondFactor(mapOf("session_id" to sessionId, "code" to code))
+            val response = authenticatedAuthService.reauthenticate(mapOf("password" to password))
             if (!response.isSuccessful) {
-                return Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Codigo invalido")))
+                return Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Contraseña incorrecta")))
             }
-            val body = response.body() ?: return Result.failure(Exception("Respuesta vacia del servidor"))
-            val accessToken = body.tokens?.accessToken
-                ?: return Result.failure(Exception("El servidor no devolvio access token"))
-            val user = body.user ?: return Result.failure(Exception("El servidor no devolvio usuario"))
-            sessionDataStore.saveSession(accessToken = accessToken, user = user)
-            Result.success(user.toDomain())
+            val body = response.body() ?: return Result.failure(Exception("Respuesta vacía del servidor"))
+            Result.success(persistSession(body))
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private suspend fun persistSession(body: com.biobox.biotech.data.remote.dto.LoginResponse): User {
+        val accessToken = body.tokens?.accessToken
+            ?: throw Exception("El servidor no devolvió access token")
+        val user = body.user ?: throw Exception("El servidor no devolvió usuario")
+        sessionDataStore.saveSession(accessToken = accessToken, user = user)
+        return user.toDomain()
     }
 
     override suspend fun logout() {
@@ -147,106 +128,11 @@ class AuthRepositoryImpl @Inject constructor(
             val response = authService.refresh()
             if (!response.isSuccessful) {
                 sessionDataStore.clearSession()
-                return Result.failure(Exception("Tu sesion expiro. Inicia sesion nuevamente."))
+                return Result.failure(Exception("Tu sesión expiró. Inicia sesión nuevamente."))
             }
-            val body = response.body() ?: return Result.failure(Exception("Respuesta vacia del servidor"))
-            val accessToken = body.tokens?.accessToken
-                ?: return Result.failure(Exception("El servidor no devolvio access token"))
-            val user = body.user ?: return Result.failure(Exception("El servidor no devolvio usuario"))
-            sessionDataStore.saveSession(accessToken = accessToken, user = user)
+            val body = response.body() ?: return Result.failure(Exception("Respuesta vacía del servidor"))
+            persistSession(body)
             Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun requestOtp(action: String): Result<Unit> {
-        return try {
-            val response = authenticatedAuthService.requestOtp(OtpActionRequest(action = action))
-            if (response.isSuccessful) {
-                val user = sessionDataStore.userData.first()
-                notificationCenter.notify(com.biobox.biotech.domain.notifications.NotificationEvent.OtpSent(user?.nombre ?: "Usuario"))
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "No fue posible solicitar el codigo")))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun verifyOtp(action: String, code: String): Result<Unit> {
-        return try {
-            val response = authenticatedAuthService.verifyOtp(OtpActionRequest(action = action, code = code))
-            if (response.isSuccessful) {
-                sessionDataStore.updateReAuthTime()
-                val user = sessionDataStore.userData.first()
-                notificationCenter.notify(com.biobox.biotech.domain.notifications.NotificationEvent.OtpVerified(user?.nombre ?: "Usuario"))
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Codigo incorrecto")))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getTelegramStatus() = try {
-        val response = authenticatedAuthService.getTelegramStatus()
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
-        } else {
-            Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Error al obtener estado de Telegram")))
-        }
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
-
-    override suspend fun getLinkingCode() = try {
-        val response = authenticatedAuthService.getLinkingCode()
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
-        } else {
-            Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Error al obtener codigo de vinculacion")))
-        }
-    } catch (e: Exception) {
-        Result.failure(e)
-    }
-
-    override suspend fun unlinkTelegram(): Result<Unit> {
-        return try {
-            val response = authenticatedAuthService.unlinkTelegram()
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "Error al desvincular Telegram")))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun requestPasswordRecovery(phoneNumber: String): Result<Unit> {
-        return try {
-            val response = authService.requestPasswordRecovery(PasswordRecoveryRequest(phoneNumber))
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "No fue posible iniciar la recuperacion de contrasena")))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun confirmPasswordRecovery(phoneNumber: String, code: String, newPassword: String): Result<Unit> {
-        return try {
-            val response = authService.confirmPasswordRecovery(
-                PasswordRecoveryConfirmRequest(
-                    phoneNumber = phoneNumber,
-                    code = code,
-                    newPassword = newPassword
-                )
-            )
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "No fue posible restablecer la contrasena")))
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -263,10 +149,8 @@ class AuthRepositoryImpl @Inject constructor(
         val normalized = message.lowercase()
         return when {
             normalized.contains("token requerido") || normalized.contains("session_id") -> "La sesión ha expirado. Vuelve a iniciar sesión."
-            normalized.contains("código inválido") || normalized.contains("codigo invalido") -> "Código no válido o expirado."
-            normalized.contains("expirado") -> "Código no válido o expirado."
+            normalized.contains("contraseña incorrecta") || normalized.contains("credenciales") -> "Teléfono o contraseña incorrectos."
             else -> message.ifBlank { fallback }
         }
     }
 }
-

@@ -8,7 +8,6 @@ enum class NotificationPriority {
 }
 
 enum class NotificationChannel {
-    TELEGRAM,
     EMAIL,
     TEAMS,
     SLACK,
@@ -40,7 +39,6 @@ sealed class NotificationEvent {
     data class PasswordRecoveryRequested(val email: String) : NotificationEvent()
     data class AccountBlocked(val email: String, val reason: String) : NotificationEvent()
     data class NewDeviceLogin(val email: String, val deviceName: String, val location: String) : NotificationEvent()
-    data class TelegramLinked(val user: String, val telegramUser: String) : NotificationEvent()
     data class OtpSent(val user: String) : NotificationEvent()
     data class OtpVerified(val user: String) : NotificationEvent()
     data class AuthExpired(val user: String) : NotificationEvent()

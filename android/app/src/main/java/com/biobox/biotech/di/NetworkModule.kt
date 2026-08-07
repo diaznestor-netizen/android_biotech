@@ -3,6 +3,7 @@ package com.biobox.biotech.di
 import com.biobox.biotech.BuildConfig
 import com.biobox.biotech.core.network.AuthInterceptor
 import com.biobox.biotech.core.network.TokenAuthenticator
+import com.biobox.biotech.core.util.AppConstants
 import com.biobox.biotech.data.remote.api.ActivityService
 import com.biobox.biotech.data.remote.api.AnalyticsService
 import com.biobox.biotech.data.remote.api.AuthService
@@ -14,7 +15,6 @@ import com.biobox.biotech.data.remote.api.InspectionService
 import com.biobox.biotech.data.remote.api.MachineService
 import com.biobox.biotech.data.remote.api.MaterialService
 import com.biobox.biotech.data.remote.api.MissionService
-import com.biobox.biotech.data.remote.api.NotificationService
 import com.biobox.biotech.data.remote.api.ProjectService
 import com.biobox.biotech.data.remote.api.ReportService
 import com.biobox.biotech.data.remote.api.SystemService
@@ -61,10 +61,10 @@ object NetworkModule {
         cookieManager: CookieManager
     ): OkHttpClient = OkHttpClient.Builder()
         .cookieJar(JavaNetCookieJar(cookieManager))
-        .addInterceptor(loggingInterceptor)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
+.addInterceptor(loggingInterceptor)
+        .connectTimeout(AppConstants.TIMEOUT_CONEXION_SEG, TimeUnit.SECONDS)
+        .readTimeout(AppConstants.TIMEOUT_LECTURA_SEG, TimeUnit.SECONDS)
+        .writeTimeout(AppConstants.TIMEOUT_CONEXION_SEG, TimeUnit.SECONDS)
         .build()
 
     @Provides
@@ -78,11 +78,11 @@ object NetworkModule {
     ): OkHttpClient = OkHttpClient.Builder()
         .cookieJar(JavaNetCookieJar(cookieManager))
         .addInterceptor(loggingInterceptor)
-        .addInterceptor(authInterceptor)
+.addInterceptor(authInterceptor)
         .authenticator(tokenAuthenticator)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(AppConstants.TIMEOUT_CONEXION_SEG, TimeUnit.SECONDS)
+        .readTimeout(AppConstants.TIMEOUT_LECTURA_SEG, TimeUnit.SECONDS)
+        .writeTimeout(AppConstants.TIMEOUT_CONEXION_SEG, TimeUnit.SECONDS)
         .build()
 
     @Provides
@@ -166,11 +166,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideReportService(@Named("MainRetrofit") retrofit: Retrofit): ReportService = retrofit.create(ReportService::class.java)
-
-    @Provides
-    @Singleton
-    fun provideNotificationService(@Named("MainRetrofit") retrofit: Retrofit): NotificationService = retrofit.create(NotificationService::class.java)
+fun provideReportService(@Named("MainRetrofit") retrofit: Retrofit): ReportService = retrofit.create(ReportService::class.java)
 }
 
 

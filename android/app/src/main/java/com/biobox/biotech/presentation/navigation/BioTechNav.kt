@@ -40,7 +40,8 @@ import com.biobox.biotech.presentation.analytics.AnalyticsViewModel
 import com.biobox.biotech.presentation.audit.AuditLogScreen
 import com.biobox.biotech.presentation.auth.AuthViewModel
 import com.biobox.biotech.presentation.auth.LoginScreen
-import com.biobox.biotech.presentation.auth.OtpVerificationScreen
+import com.biobox.biotech.presentation.auth.ReauthPasswordScreen
+import com.biobox.biotech.presentation.auth.RegisterScreen
 import com.biobox.biotech.presentation.calendar.CalendarScreen
 import com.biobox.biotech.presentation.catalogs.CatalogManagementScreen
 import com.biobox.biotech.presentation.components.navigation.BioTechBottomBar
@@ -62,7 +63,6 @@ import com.biobox.biotech.presentation.missions.MissionListScreen
 import com.biobox.biotech.presentation.notifications.NotificationsScreen
 import com.biobox.biotech.presentation.peru.PeruMachinesScreen
 import com.biobox.biotech.presentation.profile.ProfileScreen
-import com.biobox.biotech.presentation.profile.TelegramLinkingScreen
 import com.biobox.biotech.presentation.projects.ProjectDetailScreen
 import com.biobox.biotech.presentation.projects.ProjectFormScreen
 import com.biobox.biotech.presentation.projects.ProjectListScreen
@@ -82,7 +82,6 @@ fun BioTechNav(biometricAuth: BiometricAuth? = null) {
     val sessionState by authViewModel.sessionValidationState.collectAsStateWithLifecycle()
     val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
     val lastReAuthTime by authViewModel.lastReAuthTime.collectAsStateWithLifecycle()
-    val pendingSecondFactorSessionId by authViewModel.pendingSecondFactorSessionId.collectAsStateWithLifecycle()
 
     LaunchedEffect(loginState) {
         if (loginState is UiState.Success<*>) {
@@ -95,13 +94,7 @@ fun BioTechNav(biometricAuth: BiometricAuth? = null) {
 
     LaunchedEffect(lastReAuthTime) {
         if (authViewModel.isReAuthRequired(System.currentTimeMillis())) {
-            rootNavController.navigate(NavRoutes.OtpVerification.route)
-        }
-    }
-
-    LaunchedEffect(pendingSecondFactorSessionId) {
-        if (!pendingSecondFactorSessionId.isNullOrBlank()) {
-            rootNavController.navigate(NavRoutes.OtpVerification.route)
+            rootNavController.navigate(NavRoutes.ReauthPassword.route)
         }
     }
 
@@ -112,7 +105,7 @@ fun BioTechNav(biometricAuth: BiometricAuth? = null) {
                 onValidateSession = authViewModel::validateSession,
                 onNavigate = { hasSession ->
                     val targetRoute = if (hasSession) {
-                        if (authViewModel.isReAuthRequired(System.currentTimeMillis())) NavRoutes.OtpVerification.route
+                        if (authViewModel.isReAuthRequired(System.currentTimeMillis())) NavRoutes.ReauthPassword.route
                         else NavRoutes.Dashboard.route
                     } else NavRoutes.Login.route
                     rootNavController.navigate(targetRoute) {
@@ -124,29 +117,37 @@ fun BioTechNav(biometricAuth: BiometricAuth? = null) {
 
         composable(NavRoutes.Login.route) {
             LoginScreen(
-                onLogin = authViewModel::loginWithDailyCode,
+                onLogin = authViewModel::login,
+                onRegister = {
+                    rootNavController.navigate(NavRoutes.Register.route)
+                },
                 isLoading = loginState is UiState.Loading,
                 errorMessage = (loginState as? UiState.Error)?.message
             )
         }
 
-        composable(NavRoutes.OtpVerification.route) {
-            OtpVerificationScreen(
-                viewModel = authViewModel,
+        composable(NavRoutes.Register.route) {
+            RegisterScreen(
                 onSuccess = {
                     rootNavController.navigate(NavRoutes.Dashboard.route) {
-                        popUpTo(NavRoutes.OtpVerification.route) { inclusive = true }
+                        popUpTo(NavRoutes.Login.route) { inclusive = true }
                     }
                 },
                 onBack = {
-                    authViewModel.clearPendingSecondFactor()
                     rootNavController.popBackStack()
-                },
-                onSessionExpired = {
-                    authViewModel.clearPendingSecondFactor()
-                    rootNavController.navigate(NavRoutes.Login.route) {
-                        popUpTo(NavRoutes.OtpVerification.route) { inclusive = true }
+                }
+            )
+        }
+
+        composable(NavRoutes.ReauthPassword.route) {
+            ReauthPasswordScreen(
+                onSuccess = {
+                    rootNavController.navigate(NavRoutes.Dashboard.route) {
+                        popUpTo(NavRoutes.ReauthPassword.route) { inclusive = true }
                     }
+                },
+                onBack = {
+                    rootNavController.popBackStack()
                 }
             )
         }
@@ -349,14 +350,8 @@ private fun MainShell(
                     composable(NavRoutes.Profile.route) { 
                         ProfileScreen(
                             user = user, 
-                            onLogout = onLogout,
-                            onLinkTelegram = { shellNavController.navigate(NavRoutes.TelegramLinking.route) }
+                            onLogout = onLogout
                         ) 
-                    }
-                    composable(NavRoutes.TelegramLinking.route) {
-                        TelegramLinkingScreen(
-                            onBack = { shellNavController.popBackStack() }
-                        )
                     }
                     composable(NavRoutes.Settings.route) { SettingsScreen(sessionDataStore = sessionDataStore) }
                     composable(NavRoutes.HelpCenter.route) {

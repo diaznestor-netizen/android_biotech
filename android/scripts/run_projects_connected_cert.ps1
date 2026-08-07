@@ -153,11 +153,7 @@ function Wait-ForPostBootStabilization([string]$serial) {
     }
 }
 
-<<<<<<< HEAD
 function Invoke-ConnectedTests {
-=======
-function Run-ConnectedTests {
->>>>>>> e387e1054f39d5bc96ac3d6616fa4795d1bd3cb3
     Write-Step "Ejecutando :app:connectedDebugAndroidTest"
     Push-Location $androidRoot
     try {
@@ -206,11 +202,7 @@ try {
     $serial = Wait-ForBoot
     Start-Logcat -serial $serial
     Wait-ForPostBootStabilization -serial $serial
-<<<<<<< HEAD
     $exitCode = Invoke-ConnectedTests
-=======
-    $exitCode = Run-ConnectedTests
->>>>>>> e387e1054f39d5bc96ac3d6616fa4795d1bd3cb3
     Write-Summary -serial $serial -exitCode $exitCode -availableAvds $availableAvds
     exit $exitCode
 } finally {

@@ -27,15 +27,19 @@ class MachineDetailViewModel @Inject constructor(
     private val machineRepository: MachineRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
-    private val machineId: Int = checkNotNull(savedStateHandle["id"])
+    private val machineId: Int = savedStateHandle.get<Int>("id") ?: -1
     private val _state = MutableStateFlow(MachineDetailState(isLoading = true))
     val state: StateFlow<MachineDetailState> = _state.asStateFlow()
 
     init {
-        machineRepository.getMachineById(machineId)
-            .onEach { machine -> _state.update { it.copy(machine = machine) } }
-            .launchIn(viewModelScope)
-        loadMachineProduction()
+        if (machineId <= 0) {
+            _state.update { it.copy(isLoading = false, error = "Identificador de máquina no válido") }
+        } else {
+            machineRepository.getMachineById(machineId)
+                .onEach { machine -> _state.update { it.copy(machine = machine) } }
+                .launchIn(viewModelScope)
+            loadMachineProduction()
+        }
     }
 
     fun loadMachineProduction() {

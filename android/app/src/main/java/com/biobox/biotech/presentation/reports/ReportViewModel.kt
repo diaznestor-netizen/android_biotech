@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.biobox.biotech.core.common.UiState
 import com.biobox.biotech.data.remote.api.ReportService
-import com.biobox.biotech.domain.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -21,15 +20,12 @@ import javax.inject.Inject
 data class ReportState(
     val isLoading: Boolean = false,
     val downloadedFile: File? = null,
-    val isSendingToTelegram: Boolean = false,
-    val telegramSuccess: Boolean = false,
     val error: String? = null
 )
 
 @HiltViewModel
 class ReportViewModel @Inject constructor(
     private val reportService: ReportService,
-    private val notificationRepository: NotificationRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -73,20 +69,6 @@ class ReportViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.value = ReportState(error = e.message ?: "Error de descarga")
             }
-        }
-    }
-
-    fun sendReportToTelegram(reportType: String) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isSendingToTelegram = true, telegramSuccess = false, error = null)
-            val message = "🚀 BioTech Alert: Se ha generado un nuevo reporte de *$reportType* en la plataforma."
-            notificationRepository.sendTelegramNotification(message, priority = "HIGH")
-                .onSuccess {
-                    _state.value = _state.value.copy(isSendingToTelegram = false, telegramSuccess = true)
-                }
-                .onFailure {
-                    _state.value = _state.value.copy(isSendingToTelegram = false, error = it.message)
-                }
         }
     }
 

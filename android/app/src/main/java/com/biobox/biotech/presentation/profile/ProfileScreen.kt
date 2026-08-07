@@ -10,12 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,11 +19,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,8 +33,6 @@ import com.biobox.biotech.presentation.components.cards.BioTechCard
 import com.biobox.biotech.presentation.theme.AzulOscuro
 import com.biobox.biotech.presentation.theme.DarkSurface
 import com.biobox.biotech.presentation.theme.Error
-import com.biobox.biotech.presentation.theme.PrimaryBlue
-import com.biobox.biotech.presentation.theme.PrimaryCyan
 import com.biobox.biotech.presentation.theme.PrimaryGreen
 import com.biobox.biotech.presentation.theme.TextSecondaryDark
 
@@ -51,21 +40,8 @@ import com.biobox.biotech.presentation.theme.TextSecondaryDark
 fun ProfileScreen(
     user: User?,
     onLogout: () -> Unit,
-    onLinkTelegram: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var telegramLinked by remember { mutableStateOf(false) }
-    var telegramUsername by remember { mutableStateOf<String?>(null) }
-    var linkedAt by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        viewModel.getTelegramStatus().onSuccess { response ->
-            telegramLinked = response.isLinked || response.telegramVerified
-            telegramUsername = response.username
-            linkedAt = response.linkedAt
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -115,68 +91,6 @@ fun ProfileScreen(
                 ProfileInfoRow("CONTACTO", user?.email ?: "")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.White.copy(alpha = 0.05f))
                 ProfileInfoRow("ESTRUCTURA OPERATIVA", "GRUPO VALLAS / BIOTECH")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        BioTechCard(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = if (telegramLinked) PrimaryBlue.copy(alpha = 0.05f) else DarkSurface
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = null,
-                        tint = PrimaryCyan,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "TELEGRAM",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = TextSecondaryDark
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Surface(
-                        color = (if (telegramLinked) PrimaryGreen else Error).copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (telegramLinked) "VINCULADO" else "NO VINCULADO",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = if (telegramLinked) PrimaryGreen else Error,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (telegramLinked) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Usuario: @${telegramUsername ?: "---"}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Vinculado: ${linkedAt ?: "Hoy"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondaryDark
-                    )
-                } else {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onLinkTelegram,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("VINCULAR CUENTA", fontWeight = FontWeight.Bold)
-                    }
-                }
             }
         }
 
