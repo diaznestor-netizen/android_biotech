@@ -4,6 +4,7 @@ import com.biobox.biotech.data.remote.dto.AuthMessageResponse
 import com.biobox.biotech.data.remote.dto.LoginRequest
 import com.biobox.biotech.data.remote.dto.LoginResponse
 import com.biobox.biotech.data.remote.dto.OtpActionRequest
+import com.biobox.biotech.data.remote.dto.PasswordlessLoginRequest
 import com.biobox.biotech.data.remote.dto.PasswordRecoveryConfirmRequest
 import com.biobox.biotech.data.remote.dto.PasswordRecoveryRequest
 import com.biobox.biotech.data.remote.dto.TelegramLinkCodeResponse
@@ -15,8 +16,11 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface AuthService {
-    @POST("auth/login")
+@POST("auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @POST("auth/login")
+    suspend fun loginPasswordless(@Body request: PasswordlessLoginRequest): Response<LoginResponse>
 
     @POST("auth/refresh")
     suspend fun refresh(): Response<LoginResponse>

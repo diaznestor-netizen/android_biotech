@@ -124,7 +124,7 @@ fun BioTechNav(biometricAuth: BiometricAuth? = null) {
 
         composable(NavRoutes.Login.route) {
             LoginScreen(
-                onLogin = authViewModel::login,
+                onLogin = authViewModel::loginWithDailyCode,
                 isLoading = loginState is UiState.Loading,
                 errorMessage = (loginState as? UiState.Error)?.message
             )

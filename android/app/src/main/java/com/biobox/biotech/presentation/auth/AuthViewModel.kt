@@ -98,6 +98,30 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun loginWithDailyCode(telefono: String, codigo: String) {
+        if (_loginState.value is UiState.Loading) return
+        viewModelScope.launch {
+            _loginState.value = UiState.Loading
+            authRepository.loginWithDailyCode(telefono, codigo)
+                .onSuccess { user ->
+                    _pendingSecondFactorSessionId.value = null
+                    _pendingSecondFactorMessage.value = null
+                    _loginState.value = UiState.Success(user)
+                }
+                .onFailure { error ->
+                    _loginState.value = UiState.Error(error.message ?: "Error desconocido")
+                    if (error.message?.contains("bloqueada", ignoreCase = true) == true) {
+                        notificationCenter.notify(
+                            NotificationEvent.AccountBlocked(
+                                email = telefono,
+                                reason = "Múltiples intentos fallidos detectados desde Android"
+                            )
+                        )
+                    }
+                }
+        }
+    }
+
     fun validateSession() {
         if (_sessionValidationState.value is UiState.Loading) return
         viewModelScope.launch {

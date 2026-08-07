@@ -7,6 +7,11 @@ data class LoginRequest(
     val password: String
 )
 
+data class PasswordlessLoginRequest(
+    val telefono: String,
+    val codigo: String
+)
+
 data class LoginResponse(
     val tokens: Tokens? = null,
     val user: UserDto? = null,

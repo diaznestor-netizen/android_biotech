@@ -9,6 +9,7 @@ interface AuthRepository {
     val currentUser: Flow<User?>
     fun getPendingSyncCount(): Flow<Int>
     suspend fun login(phoneNumber: String, password: String): Result<User>
+    suspend fun loginWithDailyCode(telefono: String, codigo: String): Result<User>
     suspend fun verifySecondFactor(sessionId: String, code: String): Result<User>
     suspend fun logout()
     suspend fun checkSession(): Boolean

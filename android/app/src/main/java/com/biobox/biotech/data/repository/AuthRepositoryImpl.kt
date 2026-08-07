@@ -4,12 +4,16 @@ import android.content.Context
 import android.util.Log
 import androidx.work.WorkManager
 import com.biobox.biotech.core.datastore.SessionDataStore
+import com.biobox.biotech.core.util.AppConstants
+import com.biobox.biotech.core.util.SecurityUtils
 import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.database.BioTechDatabase
 import com.biobox.biotech.data.mapper.toDomain
 import com.biobox.biotech.data.remote.api.AuthService
 import com.biobox.biotech.data.remote.dto.LoginRequest
+import com.biobox.biotech.core.util.safeApiCall
 import com.biobox.biotech.data.remote.dto.OtpActionRequest
+import com.biobox.biotech.data.remote.dto.PasswordlessLoginRequest
 import com.biobox.biotech.data.remote.dto.PasswordRecoveryConfirmRequest
 import com.biobox.biotech.data.remote.dto.PasswordRecoveryRequest
 import com.biobox.biotech.domain.model.User
@@ -47,27 +51,44 @@ class AuthRepositoryImpl @Inject constructor(
     override fun getPendingSyncCount(): Flow<Int> = syncOperationDao.getPendingCount()
 
     override suspend fun login(phoneNumber: String, password: String): Result<User> {
-        return try {
-            val response = authService.login(LoginRequest(phoneNumber, password))
-            if (!response.isSuccessful) {
-                return Result.failure(Exception(parseAuthError(response.errorBody()?.string(), "No fue posible iniciar sesion")))
-            }
-            val body = response.body() ?: return Result.failure(Exception("Respuesta vacia del servidor"))
+        val phoneMasked = SecurityUtils.ofuscarTelefono(phoneNumber)
+        Log.d(AppConstants.TAG_AUTH, "Iniciando autenticación para: $phoneMasked")
+
+        return safeApiCall(
+            apiCall = { authService.login(LoginRequest(phoneNumber, password)) },
+            transform = { it }
+        ).mapCatching { body ->
             if (body.requires2FA) {
-                return Result.failure(
-                    TwoFactorRequiredException(
-                        sessionId = body.sessionId.orEmpty(),
-                        message = body.message ?: "Se requiere verificacion por Telegram"
-                    )
+                throw TwoFactorRequiredException(
+                    sessionId = body.sessionId.orEmpty(),
+                    message = body.message ?: "Se requiere verificacion por Telegram"
                 )
             }
             val accessToken = body.tokens?.accessToken
-                ?: return Result.failure(Exception("El servidor no devolvio access token"))
-            val user = body.user ?: return Result.failure(Exception("El servidor no devolvio usuario"))
+                ?: throw Exception("El servidor no devolvio access token")
+            val user = body.user ?: throw Exception("El servidor no devolvio usuario")
             sessionDataStore.saveSession(accessToken = accessToken, user = user)
-            Result.success(user.toDomain())
-        } catch (e: Exception) {
-            Result.failure(e)
+            user.toDomain()
+        }.onFailure { error ->
+            Log.e(AppConstants.TAG_AUTH, "Error en login ($phoneMasked): ${error.message}")
+        }
+    }
+
+    override suspend fun loginWithDailyCode(telefono: String, codigo: String): Result<User> {
+        val phoneMasked = SecurityUtils.ofuscarTelefono(telefono)
+        Log.d(AppConstants.TAG_AUTH, "Iniciando autenticación passwordless para: $phoneMasked")
+
+        return safeApiCall(
+            apiCall = { authService.loginPasswordless(PasswordlessLoginRequest(telefono, codigo)) },
+            transform = { it }
+        ).mapCatching { body ->
+            val accessToken = body.tokens?.accessToken
+                ?: throw Exception("El servidor no devolvio access token")
+            val user = body.user ?: throw Exception("El servidor no devolvio usuario")
+            sessionDataStore.saveSession(accessToken = accessToken, user = user)
+            user.toDomain()
+        }.onFailure { error ->
+            Log.e(AppConstants.TAG_AUTH, "Error en login passwordless ($phoneMasked): ${error.message}")
         }
     }
 
