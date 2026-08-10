@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.biobox.biotech.core.common.UiState
 import com.biobox.biotech.presentation.common.SyncStatusViewModel
+import com.biobox.biotech.presentation.notifications.AlertViewModel
 import com.biobox.biotech.presentation.components.loading.SkeletonLoader
 import com.biobox.biotech.presentation.components.loading.biotechShimmer
 import com.biobox.biotech.presentation.components.states.ErrorState
@@ -57,13 +58,25 @@ import com.biobox.biotech.presentation.theme.*
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
-    syncViewModel: SyncStatusViewModel = hiltViewModel()
+    syncViewModel: SyncStatusViewModel = hiltViewModel(),
+    alertViewModel: AlertViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val syncState by syncViewModel.state.collectAsStateWithLifecycle()
+    val incidentAlerts by alertViewModel.alerts.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         OfflineBanner(visible = !syncState.isServerConnected)
+        if (incidentAlerts.isNotEmpty()) {
+            Surface(color = Error.copy(alpha = 0.16f), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Warning, contentDescription = null, tint = Error)
+                    Spacer(Modifier.width(10.dp))
+                    Text("${incidentAlerts.size} incidencia${if (incidentAlerts.size == 1) "" else "s"} de alta prioridad pendiente${if (incidentAlerts.size == 1) "" else "s"}", modifier = Modifier.weight(1f), color = Error, fontWeight = FontWeight.Bold)
+                    Text("REVISAR", color = Error, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         
         AnimatedContent(
             targetState = uiState,

@@ -21,9 +21,10 @@ import com.biobox.biotech.data.local.entity.*
         CalendarEventEntity::class,
         UserEntity::class,
         SyncOperationEntity::class,
-        MaterialEntity::class
+        MaterialEntity::class,
+        EvidenceEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -40,6 +41,7 @@ abstract class BioTechDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun syncOperationDao(): SyncOperationDao
     abstract fun materialDao(): MaterialDao
+    abstract fun evidenceDao(): EvidenceDao
 
     companion object {
         val MIGRATION_5_6 = object : Migration(5, 6) {
@@ -113,6 +115,29 @@ abstract class BioTechDatabase : RoomDatabase() {
 
                 db.execSQL("UPDATE sync_operations SET status = 'IN_PROGRESS' WHERE status = 'SYNCING'")
                 db.execSQL("UPDATE sync_operations SET status = 'FAILED_RETRY' WHERE status = 'FAILED'")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE missions ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE goals ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'SYNCED'")
+                db.execSQL("ALTER TABLE pending_inspections ADD COLUMN remoteId INTEGER")
+                db.execSQL("""
+                    CREATE TABLE evidence (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        ownerType TEXT NOT NULL,
+                        ownerLocalId TEXT NOT NULL,
+                        localPath TEXT NOT NULL,
+                        mimeType TEXT NOT NULL,
+                        remoteUrl TEXT,
+                        syncStatus TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX index_evidence_ownerType_ownerLocalId ON evidence(ownerType, ownerLocalId)")
+                db.execSQL("CREATE INDEX index_evidence_syncStatus ON evidence(syncStatus)")
             }
         }
     }

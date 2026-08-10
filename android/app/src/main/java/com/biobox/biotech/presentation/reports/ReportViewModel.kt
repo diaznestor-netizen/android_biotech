@@ -32,30 +32,16 @@ class ReportViewModel @Inject constructor(
     private val _state = MutableStateFlow(ReportState())
     val state: StateFlow<ReportState> = _state.asStateFlow()
 
-    fun downloadReport(reportType: String, format: String) {
+    fun downloadGlobalExcel() {
         viewModelScope.launch {
             _state.value = ReportState(isLoading = true)
             try {
                 val response = withContext(Dispatchers.IO) {
-                    when (reportType to format) {
-                        "inventory" to "pdf" -> reportService.getInventoryPdf()
-                        "inventory" to "csv" -> reportService.getInventoryCsv()
-                        "machines" to "pdf" -> reportService.getMachinesPdf()
-                        "machines" to "csv" -> reportService.getMachinesCsv()
-                        "activities" to "pdf" -> reportService.getActivitiesPdf()
-                        "activities" to "csv" -> reportService.getActivitiesCsv()
-                        "missions" to "pdf" -> reportService.getMissionsPdf()
-                        "missions" to "csv" -> reportService.getMissionsCsv()
-                        "incidents" to "pdf" -> reportService.getIncidentsPdf()
-                        "incidents" to "csv" -> reportService.getIncidentsCsv()
-                        "productivity" to "pdf" -> reportService.getProductivityPdf()
-                        "productivity" to "csv" -> reportService.getProductivityCsv()
-                        else -> throw Exception("Tipo de reporte no válido")
-                    }
+					reportService.getGlobalExcel()
                 }
                 if (response.isSuccessful) {
                     val body = response.body() ?: throw Exception("Respuesta vacía")
-                    val fileName = "reporte_${reportType}_${System.currentTimeMillis()}.$format"
+                    val fileName = "Biotech_Reporte_Global_${System.currentTimeMillis()}.xlsx"
                     val file = File(context.getExternalFilesDir(null), fileName)
                     withContext(Dispatchers.IO) {
                         FileOutputStream(file).use { output ->

@@ -1,6 +1,7 @@
 package com.biobox.biotech.data.mapper
 
 import com.biobox.biotech.data.local.entity.MissionEntity
+import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.data.remote.dto.MissionDto
 import com.biobox.biotech.domain.model.Mission
 import com.biobox.biotech.domain.model.MissionPriority
@@ -40,7 +41,7 @@ fun MissionEntity.toDomain(): Mission {
     )
 }
 
-fun Mission.toEntity(): MissionEntity {
+fun Mission.toEntity(syncStatus: SyncStatus = SyncStatus.SYNCED): MissionEntity {
     return MissionEntity(
         id = id,
         titulo = titulo,
@@ -53,6 +54,7 @@ fun Mission.toEntity(): MissionEntity {
         estado = estado.name,
         fechaCreacion = fechaCreacion,
         fechaCumplimiento = fechaCumplimiento,
-        observaciones = observaciones
+        observaciones = observaciones,
+        syncStatus = syncStatus
     )
 }

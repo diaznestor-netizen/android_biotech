@@ -31,16 +31,8 @@ fun ReportsScreen(
     viewModel: ReportViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var showFormatDialog by remember { mutableStateOf(false) }
-    var selectedReport by remember { mutableStateOf("") }
-
     val reportTypes = listOf(
-        ReportType("Inventario", Icons.Default.Inventory2, "inventory", PrimaryGreen),
-        ReportType("Máquinas", Icons.Default.PrecisionManufacturing, "machines", PrimaryBlue),
-        ReportType("Actividades", Icons.Default.Assignment, "activities", PrimaryCyan),
-        ReportType("Misiones", Icons.Default.Flag, "missions", Warning),
-        ReportType("Incidencias", Icons.Default.Report, "incidents", Error),
-        ReportType("Productividad", Icons.Default.TrendingUp, "productivity", Info)
+        ReportType("Excel global", Icons.Default.TableChart, "global", PrimaryGreen)
     )
 
     Scaffold(
@@ -77,8 +69,7 @@ fun ReportsScreen(
                         icon = report.icon,
                         color = report.color,
                         modifier = Modifier.clickable {
-                            selectedReport = report.key
-                            showFormatDialog = true
+                            viewModel.downloadGlobalExcel()
                         }
                     )
                 }
@@ -135,48 +126,6 @@ fun ReportsScreen(
         }
     }
 
-    if (showFormatDialog) {
-        AlertDialog(
-            onDismissRequest = { showFormatDialog = false },
-            title = {
-                Text(
-                    "FORMATO DE DESCARGA",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    "Selecciona el formato industrial requerido para este reporte.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showFormatDialog = false
-                        viewModel.downloadReport(selectedReport, "pdf")
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("PDF (Documento)", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showFormatDialog = false
-                        viewModel.downloadReport(selectedReport, "csv")
-                    }
-                ) {
-                    Text("CSV (Datos)", color = PrimaryCyan, fontWeight = FontWeight.Bold)
-                }
-            },
-            shape = RoundedCornerShape(28.dp),
-            containerColor = DarkSurface
-        )
-    }
 }
 
 data class ReportType(val label: String, val icon: ImageVector, val key: String, val color: Color)

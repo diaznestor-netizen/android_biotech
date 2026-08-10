@@ -11,6 +11,9 @@ import com.biobox.biotech.domain.sync.SyncHandler
 import com.biobox.biotech.domain.sync.SyncResult
 import com.google.gson.Gson
 import javax.inject.Inject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class GoalSyncHandler @Inject constructor(
     private val api: GoalService,
@@ -40,12 +43,15 @@ class GoalSyncHandler @Inject constructor(
                 descripcion = goal.descripcion,
                 proyecto = goal.proyecto,
                 maquinaId = goal.maquinaId,
-                fechaInicio = goal.fechaInicio,
-                fechaFin = goal.fechaFin
+                fechaInicio = goal.fechaInicio.toGoalApiDate(),
+                fechaFin = goal.fechaFin?.toGoalApiDate()
             )
             val response = api.createGoal(request)
             if (response.isSuccessful) {
-                response.body()?.let { dao.insertGoal(it.toEntity()) }
+                val remote = response.body()?.toEntity()
+                    ?: return SyncResult.Retry("Respuesta vacía al crear meta")
+                dao.deleteGoal(operation.entityLocalId.toIntOrNull() ?: goal.id)
+                dao.insertGoal(remote)
                 SyncResult.Success
             } else {
                 SyncResult.Retry("Error HTTP ${response.code()}", response.code())
@@ -62,8 +68,8 @@ class GoalSyncHandler @Inject constructor(
                 descripcion = goal.descripcion,
                 proyecto = goal.proyecto,
                 maquinaId = goal.maquinaId,
-                fechaInicio = goal.fechaInicio,
-                fechaFin = goal.fechaFin
+                fechaInicio = goal.fechaInicio.toGoalApiDate(),
+                fechaFin = goal.fechaFin?.toGoalApiDate()
             )
             val response = api.updateGoal(goal.id, request)
             if (response.isSuccessful) {
@@ -91,3 +97,5 @@ class GoalSyncHandler @Inject constructor(
         }
     }
 }
+
+private fun Long.toGoalApiDate(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.ROOT).format(Date(this))

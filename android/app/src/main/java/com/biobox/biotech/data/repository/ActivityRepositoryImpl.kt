@@ -1,7 +1,9 @@
 package com.biobox.biotech.data.repository
 
 import com.biobox.biotech.data.local.dao.ActivityDao
+import com.biobox.biotech.data.local.dao.EvidenceDao
 import com.biobox.biotech.data.local.dao.SyncOperationDao
+import com.biobox.biotech.data.local.entity.EvidenceEntity
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
 import com.biobox.biotech.data.mapper.toDomain
@@ -21,6 +23,7 @@ import javax.inject.Inject
 class ActivityRepositoryImpl @Inject constructor(
     private val activityService: ActivityService,
     private val activityDao: ActivityDao,
+    private val evidenceDao: EvidenceDao,
     private val syncOperationDao: SyncOperationDao,
     private val globalSyncManager: GlobalSyncManager
 ) : ActivityRepository {
@@ -47,10 +50,11 @@ class ActivityRepositoryImpl @Inject constructor(
 
     override suspend fun createActivity(activity: Activity): Result<Activity> = runCatching {
         // En lugar de llamar a la API directamente, guardamos localmente y encolamos
-        val localId = UUID.randomUUID().toString()
-        // Nota: Activity domain model no tiene localId, asumimos id temporal <= 0
         val entity = activity.toEntity()
         activityDao.insertActivity(entity)
+        activity.evidencias.distinct().forEach { path ->
+            evidenceDao.insert(EvidenceEntity(UUID.randomUUID().toString(), "ACTIVITY", activity.id.toString(), path))
+        }
         
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),

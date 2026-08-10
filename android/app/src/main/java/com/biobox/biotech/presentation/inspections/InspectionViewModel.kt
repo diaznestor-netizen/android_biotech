@@ -100,7 +100,7 @@ class InspectionViewModel @Inject constructor(
     }
 
     fun captureImage(imageCapture: ImageCapture) {
-        val outputDirectory = File(context.cacheDir, "inspections").apply { mkdirs() }
+        val outputDirectory = File(context.filesDir, "evidence").apply { mkdirs() }
         val photoFile = File(
             outputDirectory,
             SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis()) + ".jpg"

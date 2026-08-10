@@ -47,6 +47,7 @@ abstract class DataModule {
                 .addMigrations(BioTechDatabase.MIGRATION_5_6)
                 .addMigrations(BioTechDatabase.MIGRATION_6_7)
                 .addMigrations(BioTechDatabase.MIGRATION_7_8)
+                .addMigrations(BioTechDatabase.MIGRATION_8_9)
                 .build()
         }
 
@@ -62,5 +63,6 @@ abstract class DataModule {
         @Provides fun provideUserDao(db: BioTechDatabase): UserDao = db.userDao()
         @Provides fun provideSyncOperationDao(db: BioTechDatabase): SyncOperationDao = db.syncOperationDao()
         @Provides fun provideMaterialDao(db: BioTechDatabase): MaterialDao = db.materialDao()
+        @Provides fun provideEvidenceDao(db: BioTechDatabase): EvidenceDao = db.evidenceDao()
     }
 }

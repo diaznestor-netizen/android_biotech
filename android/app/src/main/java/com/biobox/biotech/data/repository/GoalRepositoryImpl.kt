@@ -4,6 +4,7 @@ import com.biobox.biotech.data.local.dao.GoalDao
 import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
+import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.data.mapper.toDomain
 import com.biobox.biotech.data.mapper.toEntity
 import com.biobox.biotech.data.remote.api.GoalService
@@ -44,7 +45,7 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createGoal(goal: Goal): Result<Goal> = runCatching {
-        val entity = goal.toEntity()
+        val entity = goal.toEntity(SyncStatus.PENDING)
         goalDao.insertGoal(entity)
         
         syncOperationDao.insertOperation(SyncOperationEntity(
@@ -60,7 +61,7 @@ class GoalRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateGoal(goal: Goal): Result<Goal> = runCatching {
-        val entity = goal.toEntity()
+        val entity = goal.toEntity(SyncStatus.PENDING)
         goalDao.insertGoal(entity)
         
         syncOperationDao.insertOperation(SyncOperationEntity(

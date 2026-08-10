@@ -9,7 +9,5 @@ interface InspectionRepository {
     suspend fun submitInspection(inspection: Inspection): Result<Unit>
     suspend fun savePendingInspection(inspection: Inspection)
     fun getPendingInspections(): Flow<List<Inspection>>
-    suspend fun uploadEvidence(inspectionId: String, imagePath: String): Result<Unit>
-    suspend fun markAsSynced(id: String)
 }
 

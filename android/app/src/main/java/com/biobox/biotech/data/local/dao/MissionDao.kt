@@ -15,6 +15,9 @@ interface MissionDao {
     @Query("SELECT * FROM missions WHERE estado IN ('COMPLETADA', 'APROBADA') ORDER BY fechaCumplimiento DESC")
     fun getCompletedMissions(): Flow<List<MissionEntity>>
 
+    @Query("SELECT * FROM missions WHERE syncStatus IN ('PENDING', 'FAILED') ORDER BY fechaCreacion")
+    suspend fun getPendingMissions(): List<MissionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMissions(missions: List<MissionEntity>)
 

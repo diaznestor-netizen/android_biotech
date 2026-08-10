@@ -2,6 +2,7 @@ package com.biobox.biotech.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.biobox.biotech.core.common.SyncStatus
 
 @Entity(tableName = "goals")
 data class GoalEntity(
@@ -15,5 +16,6 @@ data class GoalEntity(
     val fechaFin: Long? = null,
     val estado: String,
     val actividadesCompletadas: Int = 0,
-    val actividadesTotales: Int = 0
+    val actividadesTotales: Int = 0,
+    val syncStatus: SyncStatus = SyncStatus.SYNCED
 )

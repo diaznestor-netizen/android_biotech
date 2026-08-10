@@ -58,6 +58,13 @@ data class TransitionMachineStateRequest(
     val comment: String = ""
 )
 
+data class AssemblyStepUpdateRequest(
+    val category: String,
+    @SerializedName("step_name") val stepName: String,
+    @SerializedName("unit_number") val unitNumber: Int,
+    val value: Double
+)
+
 data class MaterialDto(
     val id: Int?, val codigo: String? = "", val nombre: String? = "",
     val cantidadRequerida: Int? = 0, val cantidadDisponible: Int? = 0,

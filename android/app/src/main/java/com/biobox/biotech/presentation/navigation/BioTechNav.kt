@@ -1,7 +1,6 @@
 package com.biobox.biotech.presentation.navigation
 
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -10,8 +9,6 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.PrecisionManufacturing
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,6 +32,8 @@ import com.biobox.biotech.core.datastore.SessionDataStore
 import com.biobox.biotech.core.security.BiometricAuth
 import com.biobox.biotech.domain.model.User
 import com.biobox.biotech.presentation.activities.ActivityListScreen
+import com.biobox.biotech.presentation.activities.ActivityDetailScreen
+import com.biobox.biotech.presentation.activities.CreateActivityScreen
 import com.biobox.biotech.presentation.analytics.AnalyticsScreen
 import com.biobox.biotech.presentation.analytics.AnalyticsViewModel
 import com.biobox.biotech.presentation.audit.AuditLogScreen
@@ -45,21 +44,28 @@ import com.biobox.biotech.presentation.auth.RegisterScreen
 import com.biobox.biotech.presentation.calendar.CalendarScreen
 import com.biobox.biotech.presentation.catalogs.CatalogManagementScreen
 import com.biobox.biotech.presentation.components.navigation.BioTechBottomBar
-import com.biobox.biotech.presentation.components.navigation.BioTechTopBar
 import com.biobox.biotech.presentation.components.navigation.NavigationItem
-import com.biobox.biotech.presentation.components.states.EmptyState
 import com.biobox.biotech.presentation.dashboard.DashboardScreen
 import com.biobox.biotech.presentation.debug.DiagnosticScreen
 import com.biobox.biotech.presentation.documents.DocumentListScreen
 import com.biobox.biotech.presentation.goals.GoalListScreen
+import com.biobox.biotech.presentation.goals.GoalDetailScreen
+import com.biobox.biotech.presentation.goals.CreateGoalScreen
 import com.biobox.biotech.presentation.help.HelpCenterScreen
 import com.biobox.biotech.presentation.home.HomeScreen
 import com.biobox.biotech.presentation.incidents.IncidentListScreen
+import com.biobox.biotech.presentation.incidents.IncidentDetailScreen
+import com.biobox.biotech.presentation.incidents.CreateIncidentScreen
+import com.biobox.biotech.presentation.inspections.InspectionFlowScreen
 import com.biobox.biotech.presentation.inspections.InspectionListScreen
+import com.biobox.biotech.presentation.machines.MachineDetailScreen
 import com.biobox.biotech.presentation.legal.LegalScreen
 import com.biobox.biotech.presentation.machines.MachineListScreen
 import com.biobox.biotech.presentation.materials.MaterialListScreen
 import com.biobox.biotech.presentation.missions.MissionListScreen
+import com.biobox.biotech.presentation.missions.MissionDetailScreen
+import com.biobox.biotech.presentation.missions.CreateMissionScreen
+import com.biobox.biotech.presentation.missions.CompletedMissionsScreen
 import com.biobox.biotech.presentation.notifications.NotificationsScreen
 import com.biobox.biotech.presentation.peru.PeruMachinesScreen
 import com.biobox.biotech.presentation.profile.ProfileScreen
@@ -71,7 +77,6 @@ import com.biobox.biotech.presentation.settings.SettingsScreen
 import com.biobox.biotech.presentation.splash.SplashScreen
 import com.biobox.biotech.presentation.summaries.SummaryScreen
 import com.biobox.biotech.presentation.theme.DarkBackground
-import com.biobox.biotech.presentation.theme.PrimaryGreen
 import com.biobox.biotech.presentation.users.UserListScreen
 
 @Composable
@@ -291,16 +296,35 @@ private fun MainShell(
                     }
                     composable(NavRoutes.Materials.route) { MaterialListScreen() }
                     composable(NavRoutes.Inventory.route) { MaterialListScreen() }
-                    composable(NavRoutes.Inspections.route) { 
-                        PlaceholderScreen(title = "REVISIONES PENDIENTES", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    composable(NavRoutes.Inspections.route) {
+                        InspectionListScreen(
+                            onCreateInspection = { shellNavController.navigate(NavRoutes.Machines.route) }
+                        )
                     }
                     composable(
                         route = NavRoutes.MachineDetail.route,
                         arguments = listOf(navArgument("id") { type = NavType.IntType })
-                    ) { 
-                        // Note: This route might be redundant if MachineDetail is handled above
-                        // but we'll ensure it has a consistent look.
-                        PlaceholderScreen(title = "DETALLE DE MÁQUINA", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    ) {
+                        MachineDetailScreen(
+                            onBack = { shellNavController.popBackStack() },
+                            onStartInspection = { machineId ->
+                                shellNavController.navigate(NavRoutes.Inspection.createRoute(machineId))
+                            }
+                        )
+                    }
+                    composable(
+                        route = NavRoutes.Inspection.route,
+                        arguments = listOf(navArgument("machineId") { type = NavType.IntType })
+                    ) {
+                        InspectionFlowScreen(
+                            onBack = { shellNavController.popBackStack() },
+                            onFinished = {
+                                shellNavController.navigate(NavRoutes.Inspections.route) {
+                                    popUpTo(NavRoutes.Machines.route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
                     }
                     composable(NavRoutes.Activities.route) {
                         ActivityListScreen(
@@ -308,20 +332,20 @@ private fun MainShell(
                             onCreateActivity = { shellNavController.navigate(NavRoutes.NewActivity.route) }
                         )
                     }
-                    composable(NavRoutes.ActivityDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { 
-                        PlaceholderScreen(title = "DETALLE DE ACTIVIDAD", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    composable(NavRoutes.ActivityDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { entry ->
+                        ActivityDetailScreen(entry.arguments?.getInt("id") ?: 0, { shellNavController.popBackStack() })
                     }
-                    composable(NavRoutes.NewActivity.route) { PlaceholderScreen(title = "NUEVA ACTIVIDAD", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) }) }
+                    composable(NavRoutes.NewActivity.route) { CreateActivityScreen({ shellNavController.popBackStack() }, { shellNavController.popBackStack() }) }
                     composable(NavRoutes.Goals.route) {
                         GoalListScreen(
                             onGoalClick = { id -> shellNavController.navigate(NavRoutes.GoalDetail.createRoute(id)) },
                             onCreateGoal = { shellNavController.navigate(NavRoutes.NewGoal.route) }
                         )
                     }
-                    composable(NavRoutes.GoalDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { 
-                        PlaceholderScreen(title = "DETALLE DE META", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    composable(NavRoutes.GoalDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { entry ->
+                        GoalDetailScreen(entry.arguments?.getInt("id") ?: 0, { shellNavController.popBackStack() })
                     }
-                    composable(NavRoutes.NewGoal.route) { PlaceholderScreen(title = "NUEVA META", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) }) }
+                    composable(NavRoutes.NewGoal.route) { CreateGoalScreen({ shellNavController.popBackStack() }, { shellNavController.popBackStack() }) }
                     composable(NavRoutes.Missions.route) {
                         MissionListScreen(
                             onMissionClick = { id -> shellNavController.navigate(NavRoutes.MissionDetail.createRoute(id)) },
@@ -329,21 +353,21 @@ private fun MainShell(
                             onCompletedMissions = { shellNavController.navigate(NavRoutes.CompletedMissions.route) }
                         )
                     }
-                    composable(NavRoutes.MissionDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { 
-                        PlaceholderScreen(title = "DETALLE DE MISIÓN", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    composable(NavRoutes.MissionDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { entry ->
+                        MissionDetailScreen(entry.arguments?.getInt("id") ?: 0, { shellNavController.popBackStack() })
                     }
-                    composable(NavRoutes.NewMission.route) { PlaceholderScreen(title = "NUEVA MISIÓN", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) }) }
-                    composable(NavRoutes.CompletedMissions.route) { PlaceholderScreen(title = "MISIONES CUMPLIDAS", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) }) }
+                    composable(NavRoutes.NewMission.route) { CreateMissionScreen({ shellNavController.popBackStack() }, { shellNavController.popBackStack() }) }
+                    composable(NavRoutes.CompletedMissions.route) { CompletedMissionsScreen(onBack = { shellNavController.popBackStack() }) }
                     composable(NavRoutes.Incidents.route) {
                         IncidentListScreen(
                             onIncidentClick = { id -> shellNavController.navigate(NavRoutes.IncidentDetail.createRoute(id)) },
                             onCreateIncident = { shellNavController.navigate(NavRoutes.NewIncident.route) }
                         )
                     }
-                    composable(NavRoutes.IncidentDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { 
-                        PlaceholderScreen(title = "DETALLE DE INCIDENCIA", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) })
+                    composable(NavRoutes.IncidentDetail.route, arguments = listOf(navArgument("id") { type = NavType.IntType })) { entry ->
+                        IncidentDetailScreen(entry.arguments?.getInt("id") ?: 0, { shellNavController.popBackStack() })
                     }
-                    composable(NavRoutes.NewIncident.route) { PlaceholderScreen(title = "NUEVA INCIDENCIA", onAction = { shellNavController.navigate(NavRoutes.Dashboard.route) }) }
+                    composable(NavRoutes.NewIncident.route) { CreateIncidentScreen({ shellNavController.popBackStack() }, { shellNavController.popBackStack() }) }
                     composable(NavRoutes.Reports.route) { ReportsScreen() }
                     composable(NavRoutes.Documents.route) { DocumentListScreen(onDocumentClick = { }) }
                     composable(NavRoutes.Calendar.route) { CalendarScreen() }
@@ -371,34 +395,6 @@ private fun MainShell(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PlaceholderScreen(
-    title: String,
-    onAction: (() -> Unit)? = null
-) {
-    Scaffold(
-        topBar = { BioTechTopBar(title = title) },
-        containerColor = DarkBackground
-    ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            EmptyState(
-                title = title,
-                description = "No hay registros para mostrar en esta sección.",
-                action = onAction?.let {
-                    {
-                        Button(
-                            onClick = it,
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
-                        ) {
-                            Text("VOLVER AL INICIO")
-                        }
-                    }
-                }
-            )
-        }
-    }
-}
 
 
 

@@ -2,6 +2,7 @@ package com.biobox.biotech.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.biobox.biotech.core.common.SyncStatus
 
 @Entity(tableName = "missions")
 data class MissionEntity(
@@ -16,5 +17,6 @@ data class MissionEntity(
     val estado: String,
     val fechaCreacion: Long,
     val fechaCumplimiento: Long? = null,
-    val observaciones: String? = null
+    val observaciones: String? = null,
+    val syncStatus: SyncStatus = SyncStatus.SYNCED
 )

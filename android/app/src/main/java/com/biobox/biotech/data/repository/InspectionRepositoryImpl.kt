@@ -1,6 +1,8 @@
 package com.biobox.biotech.data.repository
 
 import com.biobox.biotech.data.local.dao.InspectionDao
+import com.biobox.biotech.data.local.dao.EvidenceDao
+import com.biobox.biotech.data.local.entity.EvidenceEntity
 import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
@@ -14,16 +16,13 @@ import com.biobox.biotech.domain.repository.InspectionRepository
 import com.biobox.biotech.domain.sync.GlobalSyncManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 
 class InspectionRepositoryImpl @Inject constructor(
     private val api: InspectionService,
     private val dao: InspectionDao,
+    private val evidenceDao: EvidenceDao,
     private val syncOperationDao: SyncOperationDao,
     private val globalSyncManager: GlobalSyncManager
 ) : InspectionRepository {
@@ -66,6 +65,15 @@ class InspectionRepositoryImpl @Inject constructor(
 
     override suspend fun savePendingInspection(inspection: Inspection) {
         dao.insertInspection(inspection.toEntity())
+        inspection.evidencePaths.distinct().forEach { path ->
+            evidenceDao.insert(EvidenceEntity(
+                id = UUID.nameUUIDFromBytes("${inspection.id}:$path".toByteArray()).toString(),
+                ownerType = "INSPECTION",
+                ownerLocalId = inspection.id,
+                localPath = path,
+                mimeType = java.net.URLConnection.guessContentTypeFromName(path) ?: "image/jpeg"
+            ))
+        }
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),
             entityType = "INSPECTION",
@@ -83,21 +91,5 @@ class InspectionRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun uploadEvidence(inspectionId: String, imagePath: String): Result<Unit> {
-        return try {
-            val file = File(imagePath)
-            val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-            val response = api.uploadEvidence(0, body) 
-            if (response.isSuccessful) Result.success(Unit)
-            else Result.failure(Exception("Upload failed"))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun markAsSynced(id: String) {
-        dao.deleteInspection(id)
-    }
 }
 

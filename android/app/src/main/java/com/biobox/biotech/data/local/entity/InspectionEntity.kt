@@ -10,5 +10,6 @@ data class InspectionEntity(
     val itemsJson: String, // JSON representation of List<InspectionItem>
     val observaciones: String?,
     val evidencePathsJson: String, // JSON representation of List<String>
-    val timestamp: Long
+    val timestamp: Long,
+    val remoteId: Int? = null
 )

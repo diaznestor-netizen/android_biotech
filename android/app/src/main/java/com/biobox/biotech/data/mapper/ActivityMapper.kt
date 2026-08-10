@@ -6,6 +6,8 @@ import com.biobox.biotech.domain.model.Activity
 import com.biobox.biotech.domain.model.ActivityStatus
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 private val gson = Gson()
 
@@ -17,14 +19,18 @@ fun ActivityDto.toEntity(): ActivityEntity {
         responsable = responsable ?: "Sin responsable",
         maquinaId = maquinaId,
         maquinaNombre = maquinaNombre,
-        tiempoEmpleado = tiempoEmpleado ?: 0,
-        fecha = fecha ?: System.currentTimeMillis(),
+        tiempoEmpleado = tiempoEmpleado?.toIntOrNull() ?: 0,
+        fecha = fecha.toMillis(),
         evidenciasJson = gson.toJson(evidencias ?: emptyList<String>()),
         comentarios = comentarios,
         estado = estado ?: "PENDIENTE",
-        createdAt = createdAt ?: System.currentTimeMillis()
+        createdAt = createdAt.toMillis()
     )
 }
+
+private fun String?.toMillis(): Long = this?.let { value ->
+    runCatching { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT).parse(value)?.time }.getOrNull()
+} ?: System.currentTimeMillis()
 
 fun ActivityEntity.toDomain(): Activity {
     val type = object : TypeToken<List<String>>() {}.type

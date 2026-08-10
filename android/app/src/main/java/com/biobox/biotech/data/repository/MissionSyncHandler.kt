@@ -44,7 +44,10 @@ class MissionSyncHandler @Inject constructor(
             )
             val response = api.createMission(request)
             if (response.isSuccessful) {
-                response.body()?.let { dao.insertMission(it.toEntity()) }
+                val remote = response.body()?.toEntity()
+                    ?: return SyncResult.Retry("Respuesta vacía al crear misión")
+                dao.deleteMission(operation.entityLocalId.toIntOrNull() ?: mission.id)
+                dao.insertMission(remote)
                 SyncResult.Success
             } else {
                 SyncResult.Retry("Error HTTP ${response.code()}", response.code())

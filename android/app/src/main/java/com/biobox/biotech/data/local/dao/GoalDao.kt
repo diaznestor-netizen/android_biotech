@@ -12,6 +12,9 @@ interface GoalDao {
     @Query("SELECT * FROM goals WHERE id = :id")
     fun getGoalById(id: Int): Flow<GoalEntity?>
 
+    @Query("SELECT * FROM goals WHERE syncStatus IN ('PENDING', 'FAILED') ORDER BY fechaInicio")
+    suspend fun getPendingGoals(): List<GoalEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoals(goals: List<GoalEntity>)
 

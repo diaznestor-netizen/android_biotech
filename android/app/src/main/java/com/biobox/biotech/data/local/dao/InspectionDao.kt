@@ -15,6 +15,9 @@ interface InspectionDao {
     @Query("SELECT * FROM pending_inspections WHERE id = :id")
     suspend fun getInspectionById(id: String): InspectionEntity?
 
+    @Query("UPDATE pending_inspections SET remoteId = :remoteId WHERE id = :id")
+    suspend fun setRemoteId(id: String, remoteId: Int)
+
     @Query("DELETE FROM pending_inspections WHERE id = :id")
     suspend fun deleteInspection(id: String)
 }

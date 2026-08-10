@@ -21,6 +21,12 @@ data class InspectionResponse(
     val message: String? = null
 )
 
+data class EvidenceUploadResponse(
+    val id: Int,
+    val url: String? = null,
+    val mime: String? = null
+)
+
 data class InspectionListDto(
     val id: Int,
     @SerializedName("id_maquina") val machineId: Int,

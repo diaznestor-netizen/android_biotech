@@ -19,7 +19,6 @@ android {
         versionCode = 110
         versionName = "1.1.0-alpha"
         buildConfigField("String", "API_BASE_URL", "\"https://api.biotech.grupovallas.com/api/v1/\"")
-        buildConfigField("String", "DB_PORT", "\"5434\"")
         buildConfigField("boolean", "USE_MOCK_DATA", "false")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -139,6 +138,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation("androidx.room:room-testing:2.6.1")
     testImplementation("org.robolectric:robolectric:4.14.1")
 

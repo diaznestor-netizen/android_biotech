@@ -5,11 +5,19 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface MachineService {
+    @POST("production/assembly/update")
+    suspend fun updateAssemblyStep(
+        @Body request: AssemblyStepUpdateRequest
+    ): Response<Map<String, String>>
+
     @GET("production/machines")
     suspend fun getProductionMachines(): Response<List<MachineDto>>
 
     @GET("production/machines/{id}")
     suspend fun getProductionMachine(@Path("id") id: Int): Response<MachineDto>
+
+    @GET("production/machines/by-tag/{tagCode}")
+    suspend fun getProductionMachineByTag(@Path("tagCode") tagCode: String): Response<MachineDto>
 
     @GET("production/machines/{id}/components")
     suspend fun getProductionComponents(@Path("id") id: Int): Response<List<ComponenteDto>>

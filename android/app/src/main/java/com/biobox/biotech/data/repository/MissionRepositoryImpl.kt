@@ -4,6 +4,7 @@ import com.biobox.biotech.data.local.dao.MissionDao
 import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
+import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.data.mapper.toDomain
 import com.biobox.biotech.data.mapper.toEntity
 import com.biobox.biotech.data.remote.api.MissionService
@@ -49,7 +50,7 @@ class MissionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createMission(mission: Mission): Result<Mission> = runCatching {
-        val entity = mission.toEntity()
+        val entity = mission.toEntity(SyncStatus.PENDING)
         missionDao.insertMission(entity)
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),
@@ -64,7 +65,7 @@ class MissionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateMission(mission: Mission): Result<Mission> = runCatching {
-        val entity = mission.toEntity()
+        val entity = mission.toEntity(SyncStatus.PENDING)
         missionDao.insertMission(entity)
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),

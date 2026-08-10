@@ -1,6 +1,7 @@
 package com.biobox.biotech.data.remote.api
 
 import com.biobox.biotech.data.remote.dto.InspectionListDto
+import com.biobox.biotech.data.remote.dto.EvidenceUploadResponse
 import com.biobox.biotech.data.remote.dto.InspectionRequest
 import com.biobox.biotech.data.remote.dto.InspectionResponse
 import okhttp3.MultipartBody
@@ -19,9 +20,9 @@ interface InspectionService {
     suspend fun submitInspection(@Body request: InspectionRequest): Response<InspectionResponse>
 
     @Multipart
-    @POST("evidence/upload")
+    @POST("evidence")
     suspend fun uploadEvidence(
-        @Part("inspection_id") inspectionId: Int,
+        @Part("id_revision") inspectionId: Int,
         @Part file: MultipartBody.Part
-    ): Response<Unit>
+    ): Response<EvidenceUploadResponse>
 }

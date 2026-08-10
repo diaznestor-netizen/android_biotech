@@ -5,6 +5,7 @@ import com.biobox.biotech.core.network.AuthInterceptor
 import com.biobox.biotech.core.network.TokenAuthenticator
 import com.biobox.biotech.core.util.AppConstants
 import com.biobox.biotech.data.remote.api.ActivityService
+import com.biobox.biotech.data.remote.api.AlertService
 import com.biobox.biotech.data.remote.api.AnalyticsService
 import com.biobox.biotech.data.remote.api.AuthService
 import com.biobox.biotech.data.remote.api.CalendarService
@@ -135,6 +136,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideActivityService(@Named("MainRetrofit") retrofit: Retrofit): ActivityService = retrofit.create(ActivityService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideAlertService(@Named("MainRetrofit") retrofit: Retrofit): AlertService = retrofit.create(AlertService::class.java)
 
     @Provides
     @Singleton
