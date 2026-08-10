@@ -101,6 +101,25 @@ class ActivitySyncHandler @Inject constructor(
             val response = api.updateActivity(activity.id, request)
             if (response.isSuccessful) {
                 response.body()?.let { dao.insertActivity(it.toEntity()) }
+                for (evidence in evidenceDao.getPendingByOwner("ACTIVITY", operation.entityLocalId)) {
+                    val file = File(evidence.localPath)
+                    if (!file.isFile || !file.canRead()) {
+                        evidenceDao.updateSyncResult(evidence.id, SyncStatus.FAILED, null)
+                        return SyncResult.Error("No se encuentra la evidencia local: ${file.name}")
+                    }
+                    val part = MultipartBody.Part.createFormData(
+                        "file",
+                        file.name,
+                        file.asRequestBody(evidence.mimeType.toMediaTypeOrNull())
+                    )
+                    val upload = api.uploadEvidence(activity.id, part)
+                    if (!upload.isSuccessful) {
+                        evidenceDao.updateSyncResult(evidence.id, SyncStatus.FAILED, null)
+                        return SyncResult.Retry(upload.errorBody()?.string() ?: "Error subiendo evidencia", upload.code())
+                    }
+                    evidenceDao.updateSyncResult(evidence.id, SyncStatus.SYNCED, upload.body()?.url)
+                    deleteSyncedEvidence(file)
+                }
                 SyncResult.Success
             } else {
                 SyncResult.Retry("Error HTTP ${response.code()}", response.code())

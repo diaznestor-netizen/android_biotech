@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.biobox.biotech.BuildConfig
 import com.biobox.biotech.core.common.UiState
 import com.biobox.biotech.domain.model.Activity
 import com.biobox.biotech.domain.model.ActivityStatus
@@ -17,16 +20,19 @@ import com.biobox.biotech.presentation.theme.DarkBackground
 @Composable
 fun ActivityDetailScreen(id: Int, onBack: () -> Unit, viewModel: ActivityViewModel = hiltViewModel()) {
     val state by viewModel.currentActivity.collectAsState()
+    var evidenceToDelete by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(id) { viewModel.loadActivity(id) }
     Scaffold(topBar = { BioTechTopBar("DETALLE DE ACTIVIDAD") }, containerColor = DarkBackground) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val current = state) {
                 is UiState.Success -> {
-                    Text(current.data.titulo, style = MaterialTheme.typography.headlineSmall)
-                    Text(current.data.descripcion.orEmpty())
-                    Text("Responsable: ${current.data.responsable}")
-                    Text("Tiempo: ${current.data.tiempoEmpleado} minutos")
-                    Text("Estado: ${current.data.estado.name}")
+                    val activity = current.data
+                    Text(activity.titulo, style = MaterialTheme.typography.headlineSmall)
+                    Text(activity.descripcion.orEmpty())
+                    Text("Responsable: ${activity.responsable}")
+                    Text("Tiempo: ${activity.tiempoEmpleado} minutos")
+                    Text("Estado: ${activity.estado.name}")
+                    ActivityEvidenceGallery(activity, onDelete = { evidenceToDelete = it })
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.approveActivity(id) }) { Text("Aprobar") }
                         OutlinedButton(onClick = { viewModel.rejectActivity(id, "Requiere corrección") }) { Text("Rechazar") }
@@ -38,6 +44,51 @@ fun ActivityDetailScreen(id: Int, onBack: () -> Unit, viewModel: ActivityViewMod
             OutlinedButton(onClick = onBack) { Text("Regresar") }
         }
     }
+    evidenceToDelete?.let { url ->
+        AlertDialog(
+            onDismissRequest = { evidenceToDelete = null },
+            title = { Text("Eliminar foto") },
+            text = { Text("¿Deseas eliminar esta evidencia de la actividad?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteActivityEvidence(id, url)
+                    evidenceToDelete = null
+                }) { Text("Eliminar") }
+            },
+            dismissButton = { TextButton(onClick = { evidenceToDelete = null }) { Text("Cancelar") } }
+        )
+    }
+}
+
+@Composable
+private fun ActivityEvidenceGallery(activity: Activity, onDelete: (String) -> Unit) {
+    if (activity.evidencias.isEmpty()) {
+        Text("Sin fotos adjuntas.")
+        return
+    }
+    Text("Fotos", style = MaterialTheme.typography.titleMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        activity.evidencias.forEach { url ->
+            Card(modifier = Modifier.width(120.dp)) {
+                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AsyncImage(
+                        model = absoluteEvidenceUrl(url),
+                        contentDescription = "Evidencia",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth().height(84.dp)
+                    )
+                    OutlinedButton(onClick = { onDelete(url) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Eliminar")
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun absoluteEvidenceUrl(url: String): String {
+    if (url.startsWith("http://") || url.startsWith("https://")) return url
+    return BuildConfig.API_BASE_URL.trimEnd('/') + "/" + url.trimStart('/')
 }
 
 @Composable

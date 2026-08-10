@@ -50,6 +50,22 @@ class ActivityViewModel @Inject constructor(
         }
     }
 
+    fun updateActivity(activity: Activity, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            activityRepository.updateActivity(activity)
+                .onSuccess { loadActivity(activity.id); loadActivities(); onSuccess() }
+                .onFailure { _currentActivity.value = UiState.Error(it.message ?: "Error") }
+        }
+    }
+
+    fun deleteActivityEvidence(activityId: Int, evidenceUrl: String) {
+        viewModelScope.launch {
+            activityRepository.deleteActivityEvidence(activityId, evidenceUrl)
+                .onSuccess { loadActivity(activityId); loadActivities() }
+                .onFailure { _currentActivity.value = UiState.Error(it.message ?: "Error") }
+        }
+    }
+
     fun approveActivity(id: Int) {
         viewModelScope.launch {
             activityRepository.approveActivity(id)

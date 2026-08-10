@@ -9,6 +9,7 @@ interface ActivityRepository {
     suspend fun refreshActivities()
     suspend fun createActivity(activity: Activity): Result<Activity>
     suspend fun updateActivity(activity: Activity): Result<Activity>
+    suspend fun deleteActivityEvidence(activityId: Int, evidenceUrl: String): Result<Unit>
     suspend fun approveActivity(id: Int): Result<Unit>
     suspend fun rejectActivity(id: Int, motivo: String): Result<Unit>
 }

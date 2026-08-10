@@ -71,6 +71,12 @@ class ActivityRepositoryImpl @Inject constructor(
     override suspend fun updateActivity(activity: Activity): Result<Activity> = runCatching {
         val entity = activity.toEntity()
         activityDao.insertActivity(entity)
+        activity.evidencias
+            .filter { !it.startsWith("/api/v1/evidence/") }
+            .distinct()
+            .forEach { path ->
+                evidenceDao.insert(EvidenceEntity(UUID.randomUUID().toString(), "ACTIVITY", activity.id.toString(), path))
+            }
         
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),
@@ -84,6 +90,36 @@ class ActivityRepositoryImpl @Inject constructor(
         activity
     }
 
+    override suspend fun deleteActivityEvidence(activityId: Int, evidenceUrl: String): Result<Unit> = runCatching {
+        val evidenceId = evidenceIdFromUrl(evidenceUrl) ?: throw IllegalArgumentException("Evidencia remota inválida")
+        val current = activityDao.getActivityByIdOnce(activityId)?.toDomain()
+        current?.let {
+            activityDao.insertActivity(it.copy(evidencias = it.evidencias.filterNot { url -> url == evidenceUrl }).toEntity())
+        }
+
+        val response = try {
+            activityService.deleteEvidence(activityId, evidenceId)
+        } catch (_: Exception) {
+            null
+        }
+
+        if (response?.isSuccessful == true || response?.code() == 404) {
+            refreshActivity(activityId)
+            return@runCatching
+        }
+
+        syncOperationDao.insertOperation(SyncOperationEntity(
+            id = UUID.randomUUID().toString(),
+            entityType = "ACTIVITY_EVIDENCE",
+            entityLocalId = evidenceId.toString(),
+            parentEntityLocalId = activityId.toString(),
+            operation = "DELETE",
+            payloadJson = gson.toJson(ActivityEvidenceDeletePayload(activityId, evidenceId)),
+            status = SyncOperationStatus.PENDING
+        ))
+        globalSyncManager.enqueueSync()
+    }
+
     override suspend fun approveActivity(id: Int): Result<Unit> = runCatching {
         val response = activityService.approveActivity(id)
         if (!response.isSuccessful) throw Exception("Error al aprobar: ${response.code()}")
@@ -95,4 +131,22 @@ class ActivityRepositoryImpl @Inject constructor(
         if (!response.isSuccessful) throw Exception("Error al rechazar: ${response.code()}")
         refreshActivities()
     }
+
+    private suspend fun refreshActivity(id: Int) {
+        try {
+            val response = activityService.getActivityById(id)
+            if (response.isSuccessful) {
+                response.body()?.let { activityDao.insertActivity(it.toEntity()) }
+            }
+        } catch (_: Exception) { }
+    }
+}
+
+data class ActivityEvidenceDeletePayload(
+    val activityId: Int,
+    val evidenceId: Int
+)
+
+fun evidenceIdFromUrl(url: String): Int? {
+    return Regex("/evidence/(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toIntOrNull()
 }

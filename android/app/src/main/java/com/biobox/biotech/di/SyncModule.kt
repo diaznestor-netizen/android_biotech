@@ -1,6 +1,7 @@
 package com.biobox.biotech.di
 
 import com.biobox.biotech.data.repository.ActivitySyncHandler
+import com.biobox.biotech.data.repository.ActivityEvidenceSyncHandler
 import com.biobox.biotech.data.repository.GoalSyncHandler
 import com.biobox.biotech.data.repository.IncidentSyncHandler
 import com.biobox.biotech.data.repository.InspectionSyncHandler
@@ -54,6 +55,11 @@ abstract class SyncModule {
     @IntoMap
     @StringKey("ACTIVITY")
     abstract fun bindActivitySyncHandler(impl: ActivitySyncHandler): SyncHandler
+
+    @Binds
+    @IntoMap
+    @StringKey("ACTIVITY_EVIDENCE")
+    abstract fun bindActivityEvidenceSyncHandler(impl: ActivityEvidenceSyncHandler): SyncHandler
 
     @Binds
     @IntoMap

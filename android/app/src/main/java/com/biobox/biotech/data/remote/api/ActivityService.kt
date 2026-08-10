@@ -22,6 +22,12 @@ interface ActivityService {
         @Part file: MultipartBody.Part
     ): Response<EvidenceUploadResponse>
 
+    @DELETE("activities/{id}/evidence/{evidence_id}")
+    suspend fun deleteEvidence(
+        @Path("id") id: Int,
+        @Path("evidence_id") evidenceId: Int
+    ): Response<Unit>
+
     @PUT("activities/{id}")
     suspend fun updateActivity(@Path("id") id: Int, @Body request: ActivityRequest): Response<ActivityDto>
 
