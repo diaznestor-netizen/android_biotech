@@ -74,6 +74,7 @@ class ActivitySyncHandler @Inject constructor(
                         return SyncResult.Retry(upload.errorBody()?.string() ?: "Error subiendo evidencia", upload.code())
                     }
                     evidenceDao.updateSyncResult(evidence.id, SyncStatus.SYNCED, upload.body()?.url)
+                    deleteSyncedEvidence(file)
                 }
                 dao.deleteActivity(activity.id)
                 dao.insertActivity(created.toEntity())

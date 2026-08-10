@@ -16,6 +16,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import retrofit2.Response
 import java.io.File
@@ -26,7 +27,8 @@ class InspectionSyncHandlerTest {
         val api = mockk<InspectionService>()
         val inspectionDao = mockk<InspectionDao>(relaxed = true)
         val evidenceDao = mockk<EvidenceDao>(relaxed = true)
-        val photo = File.createTempFile("biotech-evidence", ".jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val evidenceDir = createTempEvidenceDir()
+        val photo = File(evidenceDir, "inspection.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         val inspection = InspectionEntity("local-1", 4, "[]", null, "[]", 1)
         val evidence = EvidenceEntity("ev-1", "INSPECTION", "local-1", photo.path)
         val operation = SyncOperationEntity("op-1", "INSPECTION", "local-1", operation = "SUBMIT", payloadJson = "", status = SyncOperationStatus.PENDING)
@@ -42,6 +44,9 @@ class InspectionSyncHandlerTest {
         coVerify { inspectionDao.setRemoteId("local-1", 42) }
         coVerify { evidenceDao.updateSyncResult("ev-1", SyncStatus.SYNCED, "/api/v1/evidence/7", any()) }
         coVerify { inspectionDao.deleteInspection("local-1") }
-        photo.delete()
+        assertFalse(photo.exists())
     }
 }
+
+private fun createTempEvidenceDir(): File = java.nio.file.Files.createTempDirectory("biotech").toFile()
+    .resolve("files/evidence").apply { mkdirs() }

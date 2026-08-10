@@ -18,6 +18,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import retrofit2.Response
 import java.io.File
@@ -28,7 +29,9 @@ class ActivitySyncHandlerTest {
         val api = mockk<ActivityService>()
         val activityDao = mockk<ActivityDao>(relaxed = true)
         val evidenceDao = mockk<EvidenceDao>(relaxed = true)
-        val photo = File.createTempFile("biotech-activity", ".jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
+        val evidenceDir = java.nio.file.Files.createTempDirectory("biotech").toFile()
+            .resolve("files/evidence").apply { mkdirs() }
+        val photo = File(evidenceDir, "activity.jpg").apply { writeBytes(byteArrayOf(1, 2, 3)) }
         val activity = Activity(-1, "Actividad", responsable = "Operador", tiempoEmpleado = 5, fecha = 1, estado = ActivityStatus.PENDIENTE)
         val evidence = EvidenceEntity("ev-1", "ACTIVITY", "-1", photo.path)
         val operation = SyncOperationEntity("op-1", "ACTIVITY", "-1", operation = "CREATE", payloadJson = Gson().toJson(activity), status = SyncOperationStatus.PENDING)
@@ -43,6 +46,6 @@ class ActivitySyncHandlerTest {
         assertSame(SyncResult.Success, result)
         coVerify { evidenceDao.updateSyncResult("ev-1", SyncStatus.SYNCED, "/api/v1/evidence/7", any()) }
         coVerify { activityDao.deleteActivity(-1) }
-        photo.delete()
+        assertFalse(photo.exists())
     }
 }

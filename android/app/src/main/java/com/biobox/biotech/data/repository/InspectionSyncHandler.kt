@@ -58,6 +58,7 @@ class InspectionSyncHandler @Inject constructor(
                     return SyncResult.Retry(response.errorBody()?.string() ?: "Error subiendo evidencia", response.code())
                 }
                 evidenceDao.updateSyncResult(evidence.id, SyncStatus.SYNCED, response.body()?.url)
+                deleteSyncedEvidence(file)
             }
 
             dao.deleteInspection(entity.id)
