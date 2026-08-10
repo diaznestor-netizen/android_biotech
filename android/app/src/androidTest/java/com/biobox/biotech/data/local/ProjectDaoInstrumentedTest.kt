@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.data.local.database.BioTechDatabase
+import com.biobox.biotech.data.local.entity.SyncOperationStatus
 import com.biobox.biotech.data.projectEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -103,14 +104,14 @@ class ProjectDaoInstrumentedTest {
                 entityLocalId = "local-1",
                 operation = "CREATE",
                 payloadJson = "{}",
-                status = "PENDING",
+                status = SyncOperationStatus.PENDING,
                 userId = "1",
                 organizationId = "org-a",
                 tenantId = "tenant-a",
                 idempotencyKey = "local-1"
             )
         )
-        val pending = db.syncOperationDao().getPendingProjectOperationsOnce()
+        val pending = db.syncOperationDao().getPendingOperationsOnce().filter { it.entityType == "PROJECT" }
         assertEquals(1, pending.size)
         assertEquals("local-1", pending.first().entityLocalId)
     }

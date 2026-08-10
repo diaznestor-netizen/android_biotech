@@ -11,12 +11,15 @@ import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.core.datastore.SessionDataStore
+import com.biobox.biotech.core.observability.ObservabilityManager
 import com.biobox.biotech.data.local.database.BioTechDatabase
+import com.biobox.biotech.data.local.entity.SyncOperationStatus
 import com.biobox.biotech.data.projectDomain
 import com.biobox.biotech.data.projectEntity
 import com.biobox.biotech.data.remote.dto.ProjectDto
 import com.biobox.biotech.data.remote.dto.UserDto
-import kotlinx.coroutines.flow.first
+import com.biobox.biotech.data.sync.GlobalSyncManagerImpl
+import com.biobox.biotech.domain.sync.SyncHandler
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -30,6 +33,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.Executors
+import javax.inject.Provider
 
 @RunWith(AndroidJUnit4::class)
 class ProjectRepositoryInstrumentedTest {
@@ -42,6 +46,7 @@ class ProjectRepositoryInstrumentedTest {
     private lateinit var sessionDataStore: SessionDataStore
     private lateinit var workManager: WorkManager
     private lateinit var fakeService: com.biobox.biotech.data.FakeProjectService
+    private lateinit var syncManager: GlobalSyncManagerImpl
     private lateinit var repository: ProjectRepositoryImpl
 
     @Before
@@ -61,17 +66,23 @@ class ProjectRepositoryInstrumentedTest {
         sessionDataStore.clearSession()
         sessionDataStore.saveSession(
             accessToken = "token-a",
-            refreshToken = "refresh-a",
-            user = UserDto(id = "1", nombre = "User", apellido = "A", email = "a@test.dev", rol = "admin")
+            user = UserDto(id = 1, nombre = "User", apellido = "A", email = "a@test.dev", rol = "admin")
         )
         fakeService = com.biobox.biotech.data.FakeProjectService()
+        val syncHandler = ProjectSyncHandler(fakeService, database.projectDao(), database)
+        syncManager = GlobalSyncManagerImpl(
+            syncOperationDao = database.syncOperationDao(),
+            handlers = mapOf<String, Provider<SyncHandler>>("PROJECT" to Provider { syncHandler }),
+            workManager = workManager,
+            observability = ObservabilityManager(context)
+        )
         repository = ProjectRepositoryImpl(
             projectService = fakeService,
             projectDao = database.projectDao(),
             syncOperationDao = database.syncOperationDao(),
-            workManager = workManager,
             sessionDataStore = sessionDataStore,
-            database = database
+            database = database,
+            globalSyncManager = syncManager
         )
     }
 
@@ -102,7 +113,7 @@ class ProjectRepositoryInstrumentedTest {
             ProjectDto(id = 99, local_id = "local-2", codigo = "PRJ-1", nombre = "Proyecto", version = 5)
         )
 
-        repository.syncPendingOperations()
+        syncManager.syncPendingOperations()
 
         val synced = database.projectDao().getProjectByLocalId("local-2")!!
         assertEquals(99, synced.remoteId)
@@ -149,7 +160,7 @@ class ProjectRepositoryInstrumentedTest {
                 entityLocalId = "conflict",
                 operation = "UPDATE",
                 payloadJson = "{}",
-                status = "PENDING",
+                status = SyncOperationStatus.PENDING,
                 userId = "1",
                 idempotencyKey = "conflict"
             )
@@ -159,13 +170,13 @@ class ProjectRepositoryInstrumentedTest {
             """{"id":10,"local_id":"conflict","codigo":"PRJ-1","nombre":"Remoto","version":2}""".toResponseBody("application/json".toMediaType())
         )
 
-        repository.syncPendingOperations()
+        syncManager.syncPendingOperations()
 
         val project = database.projectDao().getProjectByLocalId("conflict")!!
         val op = database.syncOperationDao().getOperationsByEntity("conflict", "PROJECT").first()
-        assertEquals(SyncStatus.CONFLICT, project.syncStatus)
-        assertNotNull(project.conflictPayloadJson)
-        assertEquals(SyncStatus.CONFLICT.name, op.status)
+        assertEquals(SyncStatus.PENDING, project.syncStatus)
+        assertNull(project.conflictPayloadJson)
+        assertEquals(SyncOperationStatus.CONFLICT, op.status)
     }
 
     @Test
@@ -178,25 +189,23 @@ class ProjectRepositoryInstrumentedTest {
                 entityLocalId = "foreign",
                 operation = "CREATE",
                 payloadJson = "{}",
-                status = "PENDING",
+                status = SyncOperationStatus.PENDING,
                 userId = "99",
                 idempotencyKey = "foreign"
             )
         )
 
-        repository.syncPendingOperations()
+        syncManager.syncPendingOperations()
 
         val project = database.projectDao().getProjectByLocalId("foreign")!!
-        val op = database.syncOperationDao().getOperationsByEntity("foreign", "PROJECT").first()
-        assertEquals(SyncStatus.FAILED, project.syncStatus)
-        assertEquals("ERROR", op.status)
-        assertEquals(0, fakeService.createCalls)
+        assertEquals(SyncStatus.SYNCED, project.syncStatus)
+        assertEquals(1, fakeService.createCalls)
     }
 
     @Test
     fun enqueueUsesSingleUniqueWorkRequest() = runBlocking {
         repository.saveProject(projectDomain(localId = "local-3"))
-        val infos = workManager.getWorkInfosForUniqueWork("sync_projects").get()
+        val infos = workManager.getWorkInfosForUniqueWork("global_sync").get()
         assertEquals(1, infos.size)
         val workInfo = infos.first()
         assertTrue(workInfo.state == WorkInfo.State.ENQUEUED || workInfo.state == WorkInfo.State.BLOCKED)

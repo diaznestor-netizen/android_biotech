@@ -4,15 +4,16 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.work.Configuration
 import androidx.work.WorkManager
+import androidx.work.testing.WorkManagerTestInitHelper
+import com.biobox.biotech.core.observability.ObservabilityManager
 import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.database.BioTechDatabase
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
 import com.biobox.biotech.domain.sync.SyncHandler
 import com.biobox.biotech.domain.sync.SyncResult
-import io.mockk.coEvery
-import io.mockk.mockk
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import org.junit.After
@@ -21,6 +22,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.*
+import java.util.concurrent.Executors
 import javax.inject.Provider
 import kotlin.system.measureTimeMillis
 
@@ -30,19 +32,25 @@ class GlobalSyncStressTest {
     private lateinit var db: BioTechDatabase
     private lateinit var syncOperationDao: SyncOperationDao
     private lateinit var syncManager: GlobalSyncManagerImpl
-    private val workManager = mockk<WorkManager>(relaxed = true)
+    private lateinit var workManager: WorkManager
     
-    // Handlers simulados
-    private val projectHandler = mockk<SyncHandler>()
-    private val machineHandler = mockk<SyncHandler>()
+    private val projectHandler = FakeSyncHandler()
+    private val machineHandler = FakeSyncHandler()
 
     @Before
     fun createDb() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        WorkManagerTestInitHelper.initializeTestWorkManager(
+            context,
+            Configuration.Builder()
+                .setExecutor(Executors.newSingleThreadExecutor())
+                .build()
+        )
+        workManager = WorkManager.getInstance(context)
         db = Room.inMemoryDatabaseBuilder(context, BioTechDatabase::class.java).build()
         syncOperationDao = db.syncOperationDao()
         
-        val handlers = mapOf(
+        val handlers = mapOf<String, Provider<SyncHandler>>(
             "PROJECT" to Provider { projectHandler },
             "MACHINE" to Provider { machineHandler }
         )
@@ -50,7 +58,8 @@ class GlobalSyncStressTest {
         syncManager = GlobalSyncManagerImpl(
             syncOperationDao = syncOperationDao,
             handlers = handlers,
-            workManager = workManager
+            workManager = workManager,
+            observability = ObservabilityManager(context)
         )
     }
 
@@ -77,7 +86,7 @@ class GlobalSyncStressTest {
         ops.forEach { syncOperationDao.insertOperation(it) }
         
         // Simular latencia de red de 10ms por op
-        coEvery { projectHandler.handle(any()) } coAnswers {
+        projectHandler.resultFor = {
             delay(10)
             SyncResult.Success
         }
@@ -111,8 +120,8 @@ class GlobalSyncStressTest {
         }
 
         // Simular fallo en el proyecto (Retry)
-        coEvery { projectHandler.handle(match { it.entityLocalId == projectId }) } returns SyncResult.Retry("Timeout")
-        coEvery { machineHandler.handle(any()) } returns SyncResult.Success
+        projectHandler.resultFor = { SyncResult.Retry("Timeout") }
+        machineHandler.resultFor = { SyncResult.Success }
 
         // Act
         syncManager.syncPendingOperations()
@@ -122,7 +131,7 @@ class GlobalSyncStressTest {
         assertEquals("Las 10 máquinas deberían seguir PENDING", 10, pendingMachines.size)
         
         // Ahora arreglamos el proyecto
-        coEvery { projectHandler.handle(match { it.entityLocalId == projectId }) } returns SyncResult.Success
+        projectHandler.resultFor = { SyncResult.Success }
         
         // Act de nuevo
         syncManager.syncPendingOperations()
@@ -141,7 +150,7 @@ class GlobalSyncStressTest {
             ))
         }
         
-        coEvery { projectHandler.handle(any()) } coAnswers {
+        projectHandler.resultFor = {
             delay(5)
             SyncResult.Success
         }
@@ -156,5 +165,11 @@ class GlobalSyncStressTest {
 
         // Assert: El Mutex y compareAndSetStatus deben haber evitado duplicados
         assertEquals(0, syncOperationDao.getPendingCount().first())
+    }
+
+    private class FakeSyncHandler(
+        var resultFor: suspend (SyncOperationEntity) -> SyncResult = { SyncResult.Success }
+    ) : SyncHandler {
+        override suspend fun handle(operation: SyncOperationEntity): SyncResult = resultFor(operation)
     }
 }
