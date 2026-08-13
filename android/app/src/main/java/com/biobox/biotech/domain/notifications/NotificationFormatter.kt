@@ -99,7 +99,7 @@ object NotificationFormatter {
                     "Seguridad", 
                     "Código de acceso enviado", 
                     NotificationPriority.HIGH,
-                    "Te enviamos una contraseña de acceso que cambia automáticamente cada 4 horas por seguridad."
+                    "Te enviamos una contraseña de acceso que cambia automáticamente por seguridad."
                 )
             }
             is NotificationEvent.OtpVerified -> {
