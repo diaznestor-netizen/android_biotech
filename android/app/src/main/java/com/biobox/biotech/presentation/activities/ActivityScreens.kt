@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.biobox.biotech.presentation.activities
 
@@ -21,8 +21,16 @@ import com.biobox.biotech.presentation.theme.DarkBackground
 fun ActivityDetailScreen(id: Int, onBack: () -> Unit, viewModel: ActivityViewModel = hiltViewModel()) {
     val state by viewModel.currentActivity.collectAsState()
     var evidenceToDelete by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(id) { viewModel.loadActivity(id) }
-    Scaffold(topBar = { BioTechTopBar("DETALLE DE ACTIVIDAD") }, containerColor = DarkBackground) { padding ->
+    LaunchedEffect(Unit) {
+        viewModel.operationEvents.collect { msg -> snackbarHostState.showSnackbar(msg) }
+    }
+    Scaffold(
+        topBar = { BioTechTopBar("DETALLE DE ACTIVIDAD") },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = DarkBackground
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val current = state) {
                 is UiState.Success -> {
@@ -67,7 +75,11 @@ private fun ActivityEvidenceGallery(activity: Activity, onDelete: (String) -> Un
         return
     }
     Text("Fotos", style = MaterialTheme.typography.titleMedium)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         activity.evidencias.forEach { url ->
             Card(modifier = Modifier.width(120.dp)) {
                 Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

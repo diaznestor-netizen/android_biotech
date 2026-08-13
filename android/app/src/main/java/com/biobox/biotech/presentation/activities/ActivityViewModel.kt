@@ -6,8 +6,12 @@ import com.biobox.biotech.core.common.UiState
 import com.biobox.biotech.domain.model.Activity
 import com.biobox.biotech.domain.repository.ActivityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,10 +27,20 @@ class ActivityViewModel @Inject constructor(
     private val _currentActivity = MutableStateFlow<UiState<Activity>>(UiState.Idle)
     val currentActivity: StateFlow<UiState<Activity>> = _currentActivity.asStateFlow()
 
+    // Eventos one-shot para errores de operaciones: no destruyen el estado de pantalla
+    private val _operationEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val operationEvents: SharedFlow<String> = _operationEvents.asSharedFlow()
+
+    // Un solo colector activo por recurso: se cancela el anterior para evitar
+    // colectores duplicados y race conditions entre detalles de distintas actividades
+    private var listJob: Job? = null
+    private var detailJob: Job? = null
+
     init { loadActivities() }
 
     fun loadActivities() {
-        viewModelScope.launch {
+        listJob?.cancel()
+        listJob = viewModelScope.launch {
             activityRepository.getActivities().collect { list ->
                 _activities.value = UiState.Success(list)
             }
@@ -35,7 +49,8 @@ class ActivityViewModel @Inject constructor(
     }
 
     fun loadActivity(id: Int) {
-        viewModelScope.launch {
+        detailJob?.cancel()
+        detailJob = viewModelScope.launch {
             activityRepository.getActivityById(id).collect { act ->
                 if (act != null) _currentActivity.value = UiState.Success(act)
             }
@@ -54,15 +69,15 @@ class ActivityViewModel @Inject constructor(
         viewModelScope.launch {
             activityRepository.updateActivity(activity)
                 .onSuccess { loadActivity(activity.id); loadActivities(); onSuccess() }
-                .onFailure { _currentActivity.value = UiState.Error(it.message ?: "Error") }
+                .onFailure { _operationEvents.tryEmit(it.message ?: "Error al actualizar la actividad") }
         }
     }
 
     fun deleteActivityEvidence(activityId: Int, evidenceUrl: String) {
         viewModelScope.launch {
             activityRepository.deleteActivityEvidence(activityId, evidenceUrl)
-                .onSuccess { loadActivity(activityId); loadActivities() }
-                .onFailure { _currentActivity.value = UiState.Error(it.message ?: "Error") }
+                .onFailure { _operationEvents.tryEmit(it.message ?: "Error al eliminar la foto") }
+            // Room emite el cambio a través de los Flow ya activos: no hace falta recargar
         }
     }
 

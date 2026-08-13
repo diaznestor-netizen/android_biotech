@@ -16,6 +16,7 @@ import com.biobox.biotech.data.remote.api.InspectionService
 import com.biobox.biotech.data.remote.api.MachineService
 import com.biobox.biotech.data.remote.api.MaterialService
 import com.biobox.biotech.data.remote.api.MissionService
+import com.biobox.biotech.data.remote.api.ProfileService
 import com.biobox.biotech.data.remote.api.ProjectService
 import com.biobox.biotech.data.remote.api.ReportService
 import com.biobox.biotech.data.remote.api.SystemService
@@ -168,6 +169,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideUserService(@Named("MainRetrofit") retrofit: Retrofit): UserService = retrofit.create(UserService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideProfileService(@Named("MainRetrofit") retrofit: Retrofit): ProfileService = retrofit.create(ProfileService::class.java)
 
     @Provides
     @Singleton

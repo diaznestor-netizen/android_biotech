@@ -3,6 +3,7 @@ package com.biobox.biotech.data.repository
 import com.biobox.biotech.core.common.SyncStatus
 import com.biobox.biotech.data.local.dao.ActivityDao
 import com.biobox.biotech.data.local.dao.EvidenceDao
+import com.biobox.biotech.data.local.dao.SyncOperationDao
 import com.biobox.biotech.data.local.entity.EvidenceEntity
 import com.biobox.biotech.data.local.entity.SyncOperationEntity
 import com.biobox.biotech.data.local.entity.SyncOperationStatus
@@ -41,7 +42,7 @@ class ActivitySyncHandlerTest {
         coEvery { evidenceDao.getPendingByOwner("ACTIVITY", "-1") } returns listOf(evidence)
         coEvery { api.uploadEvidence(42, any()) } returns Response.success(EvidenceUploadResponse(7, "/api/v1/evidence/7"))
 
-        val result = ActivitySyncHandler(api, activityDao, evidenceDao).handle(operation)
+        val result = ActivitySyncHandler(api, activityDao, evidenceDao, mockk<SyncOperationDao>(relaxed = true)).handle(operation)
 
         assertSame(SyncResult.Success, result)
         coVerify { evidenceDao.updateSyncResult("ev-1", SyncStatus.SYNCED, "/api/v1/evidence/7", any()) }

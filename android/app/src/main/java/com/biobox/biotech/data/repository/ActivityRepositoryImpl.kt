@@ -17,6 +17,7 @@ import com.biobox.biotech.domain.sync.GlobalSyncManager
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 
@@ -91,23 +92,36 @@ class ActivityRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteActivityEvidence(activityId: Int, evidenceUrl: String): Result<Unit> = runCatching {
-        val evidenceId = evidenceIdFromUrl(evidenceUrl) ?: throw IllegalArgumentException("Evidencia remota inválida")
-        val current = activityDao.getActivityByIdOnce(activityId)?.toDomain()
-        current?.let {
-            activityDao.insertActivity(it.copy(evidencias = it.evidencias.filterNot { url -> url == evidenceUrl }).toEntity())
+        // 1) Reflejar el borrado en la entidad local siempre, remota o no
+        activityDao.getActivityByIdOnce(activityId)?.toDomain()?.let { current ->
+            activityDao.insertActivity(current.copy(evidencias = current.evidencias.filterNot { it == evidenceUrl }).toEntity())
         }
 
+        val evidenceId = evidenceIdFromUrl(evidenceUrl)
+        if (evidenceId == null) {
+            // Evidencia local aún no sincronizada: quitar de la cola y borrar el archivo
+            evidenceDao.deleteByOwnerAndPath("ACTIVITY", activityId.toString(), evidenceUrl)
+            runCatching { File(evidenceUrl).delete() }
+            return@runCatching
+        }
+
+        // 2) Evidencia remota: intentar borrar en el servidor
         val response = try {
             activityService.deleteEvidence(activityId, evidenceId)
         } catch (_: Exception) {
             null
         }
 
-        if (response?.isSuccessful == true || response?.code() == 404) {
-            refreshActivity(activityId)
-            return@runCatching
+        when {
+            // Sin red o fallo transitorio del servidor: encolar para el próximo sync
+            response == null || response.code() >= 500 -> enqueueEvidenceDelete(activityId, evidenceId)
+            response.isSuccessful || response.code() == 404 -> refreshActivity(activityId)
+            // 4xx restante (permisos, validación): permanente, no tiene sentido encolar
+            else -> throw Exception("No se pudo eliminar la foto (HTTP ${response.code()})")
         }
+    }
 
+    private suspend fun enqueueEvidenceDelete(activityId: Int, evidenceId: Int) {
         syncOperationDao.insertOperation(SyncOperationEntity(
             id = UUID.randomUUID().toString(),
             entityType = "ACTIVITY_EVIDENCE",

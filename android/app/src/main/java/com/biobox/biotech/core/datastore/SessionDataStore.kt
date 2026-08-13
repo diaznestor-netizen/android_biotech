@@ -79,6 +79,13 @@ class SessionDataStore @Inject constructor(private val context: Context) {
         _authToken.value = accessToken
     }
 
+    // Actualiza solo los datos del usuario (tras editar el perfil), sin tocar
+    // el token ni el tiempo de reautenticación.
+    suspend fun updateUser(user: UserDto) {
+        prefs.edit().putString(KEY_USER, gson.toJson(user)).apply()
+        _userData.value = user
+    }
+
     suspend fun saveThemePreference(isDarkMode: Boolean) {
         prefs.edit().putBoolean(KEY_DARK_MODE, isDarkMode).apply()
         _isDarkMode.value = isDarkMode

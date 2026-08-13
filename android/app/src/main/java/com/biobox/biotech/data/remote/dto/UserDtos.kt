@@ -32,3 +32,18 @@ data class RoleDto(
     val nombre: String,
     val descripcion: String? = null
 )
+
+data class UpdateProfileRequest(
+    val nombre: String? = null,
+    val apellido: String? = null,
+    val email: String? = null
+)
+
+data class ChangePasswordRequest(
+    @SerializedName("current_password") val currentPassword: String,
+    @SerializedName("new_password") val newPassword: String
+)
+
+data class ChangePhoneRequest(
+    @SerializedName("new_phone") val newPhone: String
+)

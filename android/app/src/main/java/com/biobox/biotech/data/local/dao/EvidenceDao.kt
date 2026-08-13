@@ -27,4 +27,7 @@ interface EvidenceDao {
 
     @Query("DELETE FROM evidence WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM evidence WHERE ownerType = :ownerType AND ownerLocalId = :ownerLocalId AND localPath = :localPath")
+    suspend fun deleteByOwnerAndPath(ownerType: String, ownerLocalId: String, localPath: String)
 }
