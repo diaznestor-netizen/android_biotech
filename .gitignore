@@ -3,6 +3,9 @@
 build/
 *.zip
 *.jar
+*.jks
+key.properties
+local.properties
 android/.gradle/
 android/build/
 !gradle/wrapper/gradle-wrapper.jar

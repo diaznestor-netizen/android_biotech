@@ -8,9 +8,42 @@ plugins {
     id("com.google.firebase.crashlytics")
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+fun signingValue(name: String, envName: String): String? {
+    if (keystorePropertiesFile.exists() && keystoreProperties.containsKey(name)) {
+        return keystoreProperties.getProperty(name)
+    }
+    return System.getenv(envName)
+}
+
+val keystoreStoreFile = signingValue("storeFile", "BIOTECH_STORE_FILE")
+val keystoreStorePassword = signingValue("storePassword", "BIOTECH_STORE_PASSWORD")
+val keystoreKeyAlias = signingValue("keyAlias", "BIOTECH_KEY_ALIAS")
+val keystoreKeyPassword = signingValue("keyPassword", "BIOTECH_KEY_PASSWORD")
+val hasReleaseSigning = keystoreStoreFile != null && keystoreStorePassword != null && keystoreKeyAlias != null && keystoreKeyPassword != null
+
 android {
     namespace = "com.biobox.biotech"
     compileSdk = 35
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(keystoreStoreFile!!)
+                storePassword = keystoreStorePassword!!
+                keyAlias = keystoreKeyAlias!!
+                keyPassword = keystoreKeyPassword!!
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.biobox.biotech"
@@ -31,6 +64,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
