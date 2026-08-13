@@ -6,6 +6,7 @@ build/
 *.jks
 key.properties
 local.properties
+.vscode/
 android/.gradle/
 android/build/
 !gradle/wrapper/gradle-wrapper.jar
