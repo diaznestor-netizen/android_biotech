@@ -97,17 +97,17 @@ object NotificationFormatter {
             is NotificationEvent.OtpSent -> {
                 listOf(
                     "Seguridad", 
-                    "Código OTP Enviado", 
+                    "Código de acceso enviado", 
                     NotificationPriority.HIGH,
-                    "Se ha generado un desafío de seguridad para: ${event.user}"
+                    "Te enviamos una contraseña de acceso que cambia automáticamente cada 4 horas por seguridad."
                 )
             }
             is NotificationEvent.OtpVerified -> {
                 listOf(
                     "Seguridad", 
-                    "OTP Validado", 
+                    "Acceso verificado", 
                     NotificationPriority.NORMAL,
-                    "Acceso verificado correctamente para: ${event.user}"
+                    "Tu contraseña de acceso fue validada correctamente."
                 )
             }
             is NotificationEvent.AuthExpired -> {
